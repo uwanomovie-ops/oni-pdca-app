@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>鬼速PDCA ― KGI・KPI・KDIを1画面で回すWebアプリ</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --indigo: #4f46e5; --blue: #2563eb; --emerald: #059669; --amber: #d97706;
+    --slate-50: #f8fafc; --slate-100: #f1f5f9; --slate-200: #e2e8f0;
+    --slate-400: #94a3b8; --slate-600: #475569; --slate-800: #1e293b;
+  }
+  body { font-family: 'Hiragino Sans','Hiragino Kaku Gothic ProN','Noto Sans JP',system-ui,sans-serif; background:var(--slate-50); color:var(--slate-800); line-height:1.7; }
+
+  /* HERO */
+  .hero { background:linear-gradient(135deg,#1e1b4b 0%,#312e81 50%,#1e3a5f 100%); color:white; text-align:center; padding:80px 24px 64px; }
+  .hero-label { display:inline-block; background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.25); border-radius:100px; padding:4px 16px; font-size:13px; letter-spacing:.06em; margin-bottom:24px; }
+  .hero h1 { font-size:clamp(26px,5vw,46px); font-weight:800; line-height:1.25; margin-bottom:20px; letter-spacing:-.01em; }
+  .hero h1 span { color:#fbbf24; }
+  .hero-sub { font-size:clamp(13px,2vw,16px); color:rgba(255,255,255,.75); max-width:560px; margin:0 auto 40px; }
+  .hero-sub strong { color:white; }
+  .hero-toc { display:flex; flex-wrap:wrap; justify-content:center; gap:12px; max-width:600px; margin:0 auto; }
+  .hero-toc a { background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2); color:white; text-decoration:none; padding:8px 20px; border-radius:8px; font-size:13px; transition:background .2s; }
+  .hero-toc a:hover { background:rgba(255,255,255,.2); }
+
+  /* SECTION */
+  .section { max-width:900px; margin:0 auto; padding:72px 24px; border-bottom:1px solid var(--slate-200); }
+  .section:last-child { border-bottom:none; }
+  .section-num { display:flex; align-items:center; gap:10px; margin-bottom:32px; }
+  .section-num-badge { width:32px;height:32px;border-radius:50%;background:var(--slate-800);color:white;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0; }
+  .section-num-label { font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--slate-400); }
+  .section h2 { font-size:clamp(22px,3.5vw,32px);font-weight:800;line-height:1.3;margin-bottom:12px;letter-spacing:-.01em; }
+  .section-lead { font-size:16px;color:var(--slate-600);max-width:660px;margin-bottom:48px; }
+  .section-lead strong { color:var(--slate-800); }
+
+  /* MOCKUP */
+  .mockup-wrap { background:white;border:1px solid var(--slate-200);border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.08);margin-bottom:0; }
+  .mockup-bar { background:var(--slate-100);border-bottom:1px solid var(--slate-200);padding:10px 16px;display:flex;align-items:center;gap:8px; }
+  .mockup-dot { width:10px;height:10px;border-radius:50%; }
+  .mockup-url { margin-left:8px;background:white;border:1px solid var(--slate-200);border-radius:6px;padding:3px 12px;font-size:11px;color:var(--slate-400);flex:1;max-width:280px; }
+  .mockup-header { background:white;border-bottom:1px solid var(--slate-200);padding:10px 20px;display:flex;align-items:center;justify-content:space-between; }
+  .mockup-header-title { font-weight:700;font-size:14px;display:flex;align-items:center;gap:6px; }
+  .mockup-btn { background:var(--slate-100);border:1px solid var(--slate-200);border-radius:8px;padding:4px 12px;font-size:11px;color:var(--slate-600); }
+  .mockup-panes { display:grid;grid-template-columns:repeat(4,1fr);height:440px;overflow:hidden; }
+  .mockup-pane { border-right:1px solid var(--slate-200);display:flex;flex-direction:column;background:white;overflow:hidden; }
+  .mockup-pane:last-child { border-right:none; }
+  .mockup-pane-header { padding:8px 12px;border-bottom:1px solid var(--slate-200);font-size:11px;font-weight:700;display:flex;align-items:center;gap:6px;flex-shrink:0; }
+  .ph-indigo { background:#eef2ff;color:#4338ca; }
+  .ph-blue   { background:#eff6ff;color:#1d4ed8; }
+  .ph-green  { background:#f0fdf4;color:#15803d; }
+  .ph-amber  { background:#fffbeb;color:#b45309; }
+  .mockup-pane-body { flex:1;padding:10px;overflow:hidden; }
+
+  .mock-section-label { font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--slate-400);margin:10px 0 5px;padding-top:4px;border-top:1px dashed var(--slate-200); }
+  .mock-section-label:first-child { border-top:none;margin-top:0; }
+
+  .mock-card { border-radius:10px;padding:10px 12px;margin-bottom:6px;border:1px solid var(--slate-200);font-size:11px;cursor:pointer; }
+  .mock-card.active { background:#4f46e5;border-color:#4f46e5;color:white; }
+  .mock-card.active-blue { background:#2563eb;border-color:#2563eb;color:white; }
+  .mock-card-title { font-weight:600;margin-bottom:5px;font-size:11px; }
+  .mock-bar-wrap { height:4px;background:var(--slate-100);border-radius:2px;overflow:hidden; }
+  .mock-bar-fill { height:100%;border-radius:2px; }
+  .mock-bar-row { display:flex;align-items:center;gap:6px;margin-top:4px; }
+  .mock-bar-label { font-size:9px;color:#94a3b8;text-align:right;min-width:22px; }
+  .mock-card.active .mock-bar-wrap,.mock-card.active-blue .mock-bar-wrap { background:rgba(255,255,255,.2); }
+  .mock-card.active .mock-bar-label,.mock-card.active-blue .mock-bar-label { color:rgba(255,255,255,.7); }
+
+  .mock-issue { border-left:2px solid #a5b4fc;padding:5px 8px;margin:4px 0;font-size:10px;border-radius:0 6px 6px 0;background:#f5f3ff; }
+  .mock-issue.active-issue { border-left-color:#4f46e5;background:#e0e7ff;font-weight:600; }
+
+  .mock-badge { display:inline-block;padding:1px 7px;border-radius:100px;font-size:10px;margin-right:4px;margin-top:3px; }
+  .badge-todo { background:#f1f5f9;color:#475569; }
+  .badge-do   { background:#eff6ff;color:#1d4ed8; }
+  .badge-done { background:#f0fdf4;color:#15803d; }
+
+  .mock-slider-row { display:flex;align-items:center;gap:8px;margin-top:6px; }
+  .mock-slider { flex:1;height:4px;background:var(--slate-200);border-radius:2px;position:relative; }
+  .mock-slider::after { content:'';position:absolute;left:0;top:0;height:100%;width:50%;background:#059669;border-radius:2px; }
+
+  .mock-review-label { font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--slate-400);margin-bottom:5px;margin-top:8px; }
+  .mock-textarea { background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:6px 8px;font-size:10px;color:var(--slate-600);line-height:1.5; }
+  .mock-action-item { display:flex;align-items:center;gap:6px;font-size:10px;margin-top:5px; }
+  .mock-checkbox { width:13px;height:13px;border-radius:3px;border:2px solid;flex-shrink:0; }
+  .mock-checkbox.done { background:#d97706;border-color:#d97706; }
+  .mock-checkbox.pending { border-color:var(--slate-300); }
+  .week-nav { display:flex;align-items:center;justify-content:space-between;padding:4px 10px;border-bottom:1px solid var(--slate-100);font-size:10px;color:var(--slate-600);flex-shrink:0; }
+
+  .pane-caption { display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--slate-200);border-top:none;border-radius:0 0 16px 16px;overflow:hidden; }
+  .pane-caption-item { padding:12px 14px;border-right:1px solid var(--slate-200);background:var(--slate-50); }
+  .pane-caption-item:last-child { border-right:none; }
+  .pane-caption-num { font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--slate-400);margin-bottom:2px; }
+  .pane-caption-name { font-size:12px;font-weight:700;color:var(--slate-800); }
+  .pane-caption-desc { font-size:11px;color:var(--slate-500);margin-top:2px; }
+
+  /* PROBLEM */
+  .problem-grid { display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px;margin-bottom:40px; }
+  .problem-card { background:white;border:1px solid var(--slate-200);border-radius:12px;padding:20px; }
+  .problem-num { font-size:28px;font-weight:800;color:var(--slate-200);line-height:1;margin-bottom:8px; }
+  .problem-card h3 { font-size:15px;font-weight:700;margin-bottom:6px; }
+  .problem-card p  { font-size:13px;color:var(--slate-600); }
+
+  .pane-map { background:white;border:1px solid var(--slate-200);border-radius:12px;padding:24px;margin-top:32px; }
+  .pane-map-label { font-size:13px;font-weight:600;color:var(--slate-500);margin-bottom:16px; }
+  .pane-map-row { display:grid;grid-template-columns:repeat(4,1fr);gap:10px; }
+  .pane-map-item { border-radius:10px;padding:14px;text-align:center; }
+  .pmc-1 { background:#eef2ff; } .pmc-2 { background:#eff6ff; } .pmc-3 { background:#f0fdf4; } .pmc-4 { background:#fffbeb; }
+  .pane-map-item-pane { font-size:10px;font-weight:700;letter-spacing:.06em;margin-bottom:4px; }
+  .pmc-1 .pane-map-item-pane { color:#4338ca; } .pmc-2 .pane-map-item-pane { color:#1d4ed8; }
+  .pmc-3 .pane-map-item-pane { color:#15803d; } .pmc-4 .pane-map-item-pane { color:#b45309; }
+  .pane-map-item-title { font-size:13px;font-weight:700;margin-bottom:4px; }
+  .pane-map-item-role { font-size:11px;color:var(--slate-500); }
+
+  /* INGENUITY */
+  .ingenuity-list { display:flex;flex-direction:column;gap:36px; }
+  .ingenuity-item { display:grid;grid-template-columns:48px 1fr;gap:20px;align-items:start; }
+  .ingenuity-icon { width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0; }
+  .ii-1 { background:#eef2ff; } .ii-2 { background:#ecfdf5; } .ii-3 { background:#eff6ff; } .ii-4 { background:#fffbeb; }
+  .ingenuity-item h3 { font-size:16px;font-weight:700;margin-bottom:6px; }
+  .ingenuity-item p  { font-size:14px;color:var(--slate-600); }
+  .callout { background:var(--slate-50);border:1px solid var(--slate-200);border-left:4px solid var(--indigo);border-radius:0 10px 10px 0;padding:14px 18px;margin-top:14px;font-size:13px;color:var(--slate-700); }
+  .callout strong { color:var(--indigo); }
+
+  /* hierarchy diagram */
+  .hierarchy { display:flex;align-items:stretch;gap:0;margin-top:16px;border:1px solid var(--slate-200);border-radius:12px;overflow:hidden; }
+  .h-col { flex:1;padding:16px 14px;border-right:1px solid var(--slate-200); }
+  .h-col:last-child { border-right:none; }
+  .h-col-label { font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px; }
+  .h-col-title { font-size:14px;font-weight:800;margin-bottom:4px; }
+  .h-col-sub { font-size:11px;color:var(--slate-500); }
+  .h-col-example { font-size:11px;margin-top:8px;padding:6px 10px;background:white;border:1px solid var(--slate-200);border-radius:6px;color:var(--slate-600); }
+  .hc-1 { background:#eef2ff; } .hc-2 { background:#eff6ff; } .hc-3 { background:#f0fdf4; }
+  .hc-1 .h-col-label { color:#4338ca; } .hc-2 .h-col-label { color:#1d4ed8; } .hc-3 .h-col-label { color:#15803d; }
+
+  /* status badges diagram */
+  .status-row { display:flex;gap:8px;margin-top:14px;flex-wrap:wrap; }
+  .status-badge { padding:6px 16px;border-radius:100px;font-size:12px;font-weight:700;border:1px solid; }
+  .sb-todo { background:#f1f5f9;color:#475569;border-color:#e2e8f0; }
+  .sb-do   { background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe; }
+  .sb-done { background:#f0fdf4;color:#15803d;border-color:#bbf7d0; }
+  .sb-arrow { display:flex;align-items:center;color:var(--slate-400);font-size:16px; }
+
+  /* share diagram */
+  .share-diagram { display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:center;margin-top:16px;padding:20px;background:var(--slate-50);border:1px solid var(--slate-200);border-radius:12px;font-size:13px; }
+  .share-box { background:white;border:1px solid var(--slate-200);border-radius:10px;padding:14px;text-align:center; }
+  .share-box-icon { font-size:24px;margin-bottom:6px; }
+  .share-box-label { font-weight:600;font-size:12px;color:var(--slate-700); }
+  .share-box-sub { font-size:11px;color:var(--slate-400);margin-top:2px; }
+  .share-arrow { text-align:center;color:var(--slate-400);font-weight:700;font-size:20px; }
+
+  /* STRUGGLE */
+  .struggle-list { display:flex;flex-direction:column;gap:28px; }
+  .struggle-item { background:white;border:1px solid var(--slate-200);border-radius:12px;padding:24px; }
+  .struggle-item-num { font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--slate-400);margin-bottom:8px; }
+  .struggle-item h3 { font-size:16px;font-weight:700;margin-bottom:10px; }
+  .struggle-item p  { font-size:14px;color:var(--slate-600);line-height:1.75; }
+  .conclusion { margin-top:14px;padding:12px 16px;background:var(--slate-50);border-radius:8px;font-size:13px;color:var(--slate-700);border-left:3px solid var(--amber); }
+
+  footer { text-align:center;padding:40px 24px;font-size:12px;background:#0f172a;color:rgba(255,255,255,.4); }
+  footer span { color:rgba(255,255,255,.7);font-weight:600; }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-label">AI-Driven School｜月次課題 第3回</div>
+  <h1>⚡ 鬼速PDCA<br><span>KGI・KPI・KDIを<br>1画面で週次に回すWebアプリ</span></h1>
+  <p class="hero-sub">
+    「目標は立てた。でも今週何をすべきか分からない」を解消する。<br>
+    KGI → KPI → KDI の3階層と週次レビューを<strong>1画面に収めた</strong>のがこのアプリです。
+  </p>
+  <nav class="hero-toc">
+    <a href="#overview">アプリ概要</a>
+    <a href="#capture">画面のキャプチャ</a>
+    <a href="#problem">解決する課題</a>
+    <a href="#ingenuity">工夫したポイント</a>
+    <a href="#struggle">苦戦したポイント</a>
+    <a href="#storage">何をどこに保存するか</a>
+  </nav>
+</div>
+
+<!-- OVERVIEW: APP INTRO (前提共有) -->
+<div id="overview" style="background:white;border-bottom:1px solid #e2e8f0;">
+  <div style="max-width:900px;margin:0 auto;padding:56px 24px;">
+
+    <div style="text-align:center;margin-bottom:40px;">
+      <div style="display:inline-block;background:#f1f5f9;border-radius:100px;padding:4px 14px;font-size:12px;font-weight:600;color:#64748b;letter-spacing:.06em;margin-bottom:16px;">このアプリについて</div>
+      <h2 style="font-size:clamp(20px,3vw,28px);font-weight:800;margin-bottom:12px;">「第二領域」のタスクを、KGI→KPI→KDIで管理するWebアプリ</h2>
+      <p style="font-size:15px;color:#475569;max-width:580px;margin:0 auto;">
+        書籍『鬼速PDCA』の考え方をもとに、<strong style="color:#1e293b">緊急ではないが重要なタスク（第二領域）</strong>を週次PDCAで回すために作ったツールです。
+      </p>
+    </div>
+
+    <!-- 3-level hierarchy visual -->
+    <div style="display:grid;grid-template-columns:1fr 32px 1fr 32px 1fr;align-items:center;margin-bottom:40px;">
+      <div style="background:#eef2ff;border:1px solid #c7d2fe;border-radius:14px;padding:20px;text-align:center;">
+        <div style="font-size:10px;font-weight:800;letter-spacing:.1em;color:#6366f1;margin-bottom:6px;">KGI</div>
+        <div style="font-size:16px;font-weight:800;color:#312e81;margin-bottom:4px;">最終目標</div>
+        <div style="font-size:11px;color:#4338ca;margin-bottom:10px;">Key Goal Indicator</div>
+        <div style="background:white;border:1px solid #c7d2fe;border-radius:8px;padding:6px 10px;font-size:11px;color:#4338ca;">例：英語スピーキング力を上げる</div>
+      </div>
+      <div style="text-align:center;font-size:20px;color:#94a3b8;">→</div>
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:14px;padding:20px;text-align:center;">
+        <div style="font-size:10px;font-weight:800;letter-spacing:.1em;color:#3b82f6;margin-bottom:6px;">KPI</div>
+        <div style="font-size:16px;font-weight:800;color:#1e3a8a;margin-bottom:4px;">中間指標</div>
+        <div style="font-size:11px;color:#2563eb;margin-bottom:10px;">Key Performance Indicator</div>
+        <div style="background:white;border:1px solid #bfdbfe;border-radius:8px;padding:6px 10px;font-size:11px;color:#2563eb;">例：週3回レッスン受講率</div>
+      </div>
+      <div style="text-align:center;font-size:20px;color:#94a3b8;">→</div>
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:14px;padding:20px;text-align:center;">
+        <div style="font-size:10px;font-weight:800;letter-spacing:.1em;color:#22c55e;margin-bottom:6px;">KDI</div>
+        <div style="font-size:16px;font-weight:800;color:#14532d;margin-bottom:4px;">行動指標</div>
+        <div style="font-size:11px;color:#16a34a;margin-bottom:10px;">Key Do Indicator</div>
+        <div style="background:white;border:1px solid #bbf7d0;border-radius:8px;padding:6px 10px;font-size:11px;color:#16a34a;">例：予約カレンダーに3枠ブロック</div>
+      </div>
+    </div>
+
+    <!-- App screenshot mockup -->
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.06);">
+      <div style="background:#f1f5f9;border-bottom:1px solid #e2e8f0;padding:8px 14px;display:flex;align-items:center;gap:6px;">
+        <div style="width:9px;height:9px;border-radius:50%;background:#f87171;"></div>
+        <div style="width:9px;height:9px;border-radius:50%;background:#fbbf24;"></div>
+        <div style="width:9px;height:9px;border-radius:50%;background:#34d399;"></div>
+        <div style="margin-left:8px;background:white;border:1px solid #e2e8f0;border-radius:5px;padding:2px 12px;font-size:10px;color:#94a3b8;flex:1;max-width:220px;">⚡ oni-pdca.vercel.app</div>
+      </div>
+      <div style="background:white;border-bottom:1px solid #e2e8f0;padding:8px 18px;display:flex;align-items:center;justify-content:space-between;">
+        <span style="font-size:13px;font-weight:800;">⚡ 鬼速PDCAボード</span>
+        <div style="display:flex;gap:8px;">
+          <span style="font-size:10px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;padding:3px 10px;color:#475569;">🔗 共有URLをコピー</span>
+          <span style="font-size:10px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;padding:3px 10px;color:#475569;">ログアウト</span>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);height:200px;background:white;">
+        <!-- Pane 1: KGI + 課題 -->
+        <div style="border-right:1px solid #f1f5f9;display:flex;flex-direction:column;overflow:hidden;">
+          <div style="background:#eef2ff;padding:7px 10px;font-size:10px;font-weight:700;color:#4338ca;border-bottom:1px solid #e0e7ff;flex-shrink:0;">🎯 KGI ＋ 課題</div>
+          <div style="flex:1;padding:8px;overflow:hidden;">
+            <div style="background:#4f46e5;color:white;border-radius:8px;padding:8px 10px;font-size:10px;font-weight:600;margin-bottom:5px;">英語スピーキング力を上げる<div style="height:3px;background:rgba(255,255,255,.3);border-radius:2px;margin-top:5px;"><div style="width:72%;height:100%;background:rgba(255,255,255,.7);border-radius:2px;"></div></div></div>
+            <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:6px 10px;font-size:10px;margin-bottom:5px;">副業で月10万を達成する<div style="height:3px;background:#f1f5f9;border-radius:2px;margin-top:4px;"><div style="width:30%;height:100%;background:#f59e0b;border-radius:2px;"></div></div></div>
+            <div style="font-size:9px;font-weight:700;color:#a5b4fc;letter-spacing:.06em;text-transform:uppercase;padding:4px 0 3px;border-top:1px dashed #e0e7ff;margin-top:2px;">課題</div>
+            <div style="border-left:2px solid #818cf8;background:#f5f3ff;padding:4px 7px;font-size:9px;border-radius:0 5px 5px 0;margin-bottom:3px;font-weight:600;color:#4338ca;">発音が通じない場面が多い</div>
+            <div style="border-left:2px solid #c7d2fe;background:#fafafa;padding:4px 7px;font-size:9px;border-radius:0 5px 5px 0;color:#6b7280;">語彙量が不足している</div>
+          </div>
+        </div>
+        <!-- Pane 2: KPI -->
+        <div style="border-right:1px solid #f1f5f9;display:flex;flex-direction:column;overflow:hidden;">
+          <div style="background:#eff6ff;padding:7px 10px;font-size:10px;font-weight:700;color:#1d4ed8;border-bottom:1px solid #dbeafe;flex-shrink:0;">📊 KPI</div>
+          <div style="flex:1;padding:8px;overflow:hidden;">
+            <div style="font-size:9px;color:#94a3b8;margin-bottom:6px;">▶ 発音が通じない…</div>
+            <div style="background:#2563eb;color:white;border-radius:8px;padding:8px 10px;font-size:9px;font-weight:600;margin-bottom:5px;">週3回レッスン受講率<div style="height:3px;background:rgba(255,255,255,.3);border-radius:2px;margin-top:5px;"><div style="width:67%;height:100%;background:rgba(255,255,255,.7);border-radius:2px;"></div></div></div>
+            <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:6px 10px;font-size:9px;margin-bottom:5px;">毎日シャドーイング継続率<div style="height:3px;background:#f1f5f9;border-radius:2px;margin-top:4px;"><div style="width:87%;height:100%;background:#22c55e;border-radius:2px;"></div></div></div>
+          </div>
+        </div>
+        <!-- Pane 3: KDI -->
+        <div style="border-right:1px solid #f1f5f9;display:flex;flex-direction:column;overflow:hidden;">
+          <div style="background:#f0fdf4;padding:7px 10px;font-size:10px;font-weight:700;color:#15803d;border-bottom:1px solid #dcfce7;flex-shrink:0;">⚡ KDI</div>
+          <div style="flex:1;padding:8px;overflow:hidden;">
+            <div style="font-size:9px;color:#94a3b8;margin-bottom:6px;">▶ 週3回レッスン…</div>
+            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:6px 10px;font-size:9px;margin-bottom:4px;"><span style="background:#dcfce7;color:#15803d;border-radius:100px;padding:1px 5px;font-size:8px;font-weight:700;margin-right:4px;">DONE</span>DMM英会話プラン契約</div>
+            <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:6px 10px;font-size:9px;margin-bottom:4px;"><span style="background:#eff6ff;color:#1d4ed8;border-radius:100px;padding:1px 5px;font-size:8px;font-weight:700;margin-right:4px;">DO</span>週3枠カレンダーにブロック</div>
+            <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:6px 10px;font-size:9px;"><span style="background:#f1f5f9;color:#475569;border-radius:100px;padding:1px 5px;font-size:8px;font-weight:700;margin-right:4px;">TODO</span>講師5名を事前選定</div>
+          </div>
+        </div>
+        <!-- Pane 4: Check/Action -->
+        <div style="display:flex;flex-direction:column;overflow:hidden;">
+          <div style="background:#fffbeb;padding:7px 10px;font-size:10px;font-weight:700;color:#b45309;border-bottom:1px solid #fde68a;flex-shrink:0;">📝 Check / Action</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:3px 8px;border-bottom:1px solid #f1f5f9;font-size:9px;color:#64748b;flex-shrink:0;"><span>‹</span><span>6/9 〜 6/15週</span><span>›</span></div>
+          <div style="flex:1;padding:8px;overflow:hidden;">
+            <div style="font-size:8px;font-weight:700;color:#94a3b8;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px;">振り返り</div>
+            <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:5px 7px;font-size:9px;color:#78350f;line-height:1.4;margin-bottom:6px;">英会話2回のみ。来週は先に予約を確保する。</div>
+            <div style="font-size:8px;font-weight:700;color:#94a3b8;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px;">Action</div>
+            <div style="display:flex;align-items:center;gap:5px;font-size:9px;margin-bottom:4px;"><div style="width:11px;height:11px;border-radius:3px;background:#d97706;flex-shrink:0;"></div><span style="text-decoration:line-through;color:#94a3b8;">3枠予約する</span></div>
+            <div style="display:flex;align-items:center;gap:5px;font-size:9px;"><div style="width:11px;height:11px;border-radius:3px;border:2px solid #d1d5db;flex-shrink:0;"></div><span>素材を週初めに準備</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- SECTION 1: CAPTURE -->
+<div class="section" id="capture">
+  <div class="section-num">
+    <div class="section-num-badge">1</div>
+    <div class="section-num-label">SECTION 1</div>
+  </div>
+  <h2>画面のキャプチャ</h2>
+  <p class="section-lead">
+    起動すると、この4ペインのボードが立ち上がります。<br>
+    左から右へ「大きい目標 → 計測指標 → 今日の行動 → 振り返り」と視線が流れる構造です。
+  </p>
+
+  <div class="mockup-wrap">
+    <div class="mockup-bar">
+      <div class="mockup-dot" style="background:#f87171"></div>
+      <div class="mockup-dot" style="background:#fbbf24"></div>
+      <div class="mockup-dot" style="background:#34d399"></div>
+      <div class="mockup-url">localhost:3000</div>
+    </div>
+    <div class="mockup-header">
+      <div class="mockup-header-title">⚡ 鬼速PDCAボード</div>
+      <div style="display:flex;gap:8px;">
+        <div class="mockup-btn">🔗 共有URLをコピー</div>
+        <div class="mockup-btn">ログアウト</div>
+      </div>
+    </div>
+    <div class="mockup-panes">
+      <!-- Pane 1: KGI + 課題 -->
+      <div class="mockup-pane">
+        <div class="mockup-pane-header ph-indigo">🎯 KGI＋課題</div>
+        <div class="mockup-pane-body">
+          <div class="mock-section-label">KGI（最終目標）</div>
+          <div class="mock-card active">
+            <div class="mock-card-title">英語スピーキング力を上げる</div>
+            <div class="mock-bar-row">
+              <div class="mock-bar-wrap" style="flex:1"><div class="mock-bar-fill" style="width:72%;background:rgba(255,255,255,.7)"></div></div>
+              <div class="mock-bar-label">72%</div>
+            </div>
+          </div>
+          <div class="mock-card">
+            <div class="mock-card-title">副業で月10万を達成する</div>
+            <div class="mock-bar-row">
+              <div class="mock-bar-wrap" style="flex:1"><div class="mock-bar-fill" style="width:30%;background:#f59e0b"></div></div>
+              <div class="mock-bar-label">30%</div>
+            </div>
+          </div>
+          <div class="mock-section-label">課題（選択中のKGI）</div>
+          <div class="mock-issue active-issue">発音が通じない場面が多い</div>
+          <div class="mock-issue">語彙量が不足している</div>
+          <div class="mock-issue">英会話の機会が少ない</div>
+        </div>
+      </div>
+      <!-- Pane 2: KPI -->
+      <div class="mockup-pane">
+        <div class="mockup-pane-header ph-blue">📊 KPI</div>
+        <div class="mockup-pane-body">
+          <div style="font-size:10px;color:#94a3b8;padding:2px 0 8px">▶ 発音が通じない場面が多い</div>
+          <div class="mock-card active-blue">
+            <div class="mock-card-title">週3回の英会話レッスン受講率</div>
+            <div class="mock-bar-row">
+              <div class="mock-bar-wrap" style="flex:1"><div class="mock-bar-fill" style="width:67%;background:rgba(255,255,255,.7)"></div></div>
+              <div class="mock-bar-label">67%</div>
+            </div>
+          </div>
+          <div class="mock-card">
+            <div class="mock-card-title">毎日10分シャドーイング継続率</div>
+            <div class="mock-bar-row">
+              <div class="mock-bar-wrap" style="flex:1"><div class="mock-bar-fill" style="width:87%;background:#22c55e"></div></div>
+              <div class="mock-bar-label">87%</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Pane 3: KDI -->
+      <div class="mockup-pane">
+        <div class="mockup-pane-header ph-green">⚡ KDI</div>
+        <div class="mockup-pane-body">
+          <div style="font-size:10px;color:#94a3b8;padding:2px 0 8px">▶ 週3回の英会話レッスン受講率</div>
+          <div class="mock-card" style="background:#f0fdf4;border-color:#bbf7d0">
+            <div class="mock-card-title">DMM英会話プランを契約する</div>
+            <div><span class="mock-badge badge-done">DONE</span></div>
+            <div class="mock-bar-row" style="margin-top:4px">
+              <div class="mock-bar-wrap" style="flex:1"><div class="mock-bar-fill" style="width:100%;background:#22c55e"></div></div>
+              <div class="mock-bar-label">100%</div>
+            </div>
+          </div>
+          <div class="mock-card">
+            <div class="mock-card-title">週3枠を予約カレンダーにブロック</div>
+            <div><span class="mock-badge badge-do">DO</span></div>
+            <div class="mock-bar-row" style="margin-top:4px">
+              <div class="mock-bar-wrap" style="flex:1"><div class="mock-bar-fill" style="width:50%;background:#3b82f6"></div></div>
+              <div class="mock-bar-label">50%</div>
+            </div>
+            <div class="mock-slider-row">
+              <span style="font-size:9px;color:#94a3b8">達成率</span>
+              <div class="mock-slider"></div>
+              <span style="font-size:10px;font-weight:600">50%</span>
+            </div>
+          </div>
+          <div class="mock-card">
+            <div class="mock-card-title">講師ランキングから5名を事前選定</div>
+            <div><span class="mock-badge badge-todo">TODO</span></div>
+            <div class="mock-bar-row" style="margin-top:4px">
+              <div class="mock-bar-wrap" style="flex:1"><div class="mock-bar-fill" style="width:0%;background:#94a3b8"></div></div>
+              <div class="mock-bar-label">0%</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Pane 4: Check/Action -->
+      <div class="mockup-pane">
+        <div class="mockup-pane-header ph-amber">📝 Check / Action</div>
+        <div class="week-nav"><span>‹</span><span>6/2 〜 6/8週</span><span>›</span></div>
+        <div class="mockup-pane-body">
+          <div style="font-size:10px;color:#94a3b8;padding:2px 0 6px">▶ 英語スピーキング力を上げる</div>
+          <div class="mock-review-label">振り返り（Check）</div>
+          <div class="mock-textarea">シャドーイングは継続できた。英会話は2回しか受けられなかった。予約を先に確保する習慣をつける。</div>
+          <div class="mock-review-label" style="margin-top:8px">Actionアイテム</div>
+          <div class="mock-action-item"><div class="mock-checkbox done"></div><span>来週分の英会話を3枠予約</span></div>
+          <div class="mock-action-item"><div class="mock-checkbox pending"></div><span>素材を週初めに準備する</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="pane-caption">
+      <div class="pane-caption-item">
+        <div class="pane-caption-num">PANE 1</div>
+        <div class="pane-caption-name">KGI＋課題</div>
+        <div class="pane-caption-desc">最終目標と、それを阻む課題</div>
+      </div>
+      <div class="pane-caption-item">
+        <div class="pane-caption-num">PANE 2</div>
+        <div class="pane-caption-name">KPI</div>
+        <div class="pane-caption-desc">課題を測る中間指標</div>
+      </div>
+      <div class="pane-caption-item">
+        <div class="pane-caption-num">PANE 3</div>
+        <div class="pane-caption-name">KDI</div>
+        <div class="pane-caption-desc">KPIを動かす具体的な行動（TODO / DO / DONE）</div>
+      </div>
+      <div class="pane-caption-item">
+        <div class="pane-caption-num">PANE 4</div>
+        <div class="pane-caption-name">Check / Action</div>
+        <div class="pane-caption-desc">週次の振り返りと次の行動</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 2: PROBLEM -->
+<div class="section" id="problem">
+  <div class="section-num">
+    <div class="section-num-badge">2</div>
+    <div class="section-num-label">SECTION 2</div>
+  </div>
+  <h2>解決する課題</h2>
+  <p class="section-lead">
+    このアプリが解こうとしているのは<br>
+    <strong>「KGIを立てても、今週のKDIに落とし込めず、第二領域が後回しになり続ける」</strong>こと
+  </p>
+
+  <div class="problem-grid">
+    <div class="problem-card">
+      <div class="problem-num">01</div>
+      <h3>KGIが宙に浮く</h3>
+      <p>「英語力を上げたい」というKGIはあっても、今週の行動（KDI）に落とし込まれていないと何も進まない。KGI → KPI → KDI の3階層で、目標を今日の行動まで分解する。</p>
+    </div>
+    <div class="problem-card">
+      <div class="problem-num">02</div>
+      <h3>KPIとKDIが混在する</h3>
+      <p>「計測する指標（KPI）」と「実際にやること（KDI）」が混在すると、何を管理しているのか曖昧になる。KPIペインとKDIペインを分けることで、役割を明確にする。</p>
+    </div>
+    <div class="problem-card">
+      <div class="problem-num">03</div>
+      <h3>振り返りが形骸化する</h3>
+      <p>Check/Actionを別ツールで行うと、KDIの状態と連動せず形骸化しやすい。週次レビューをKDIと同じ画面の第4ペインに置き、「何がDOで何がTODOか」を見ながら振り返る。</p>
+    </div>
+    <div class="problem-card">
+      <div class="problem-num">04</div>
+      <h3>進捗を仲間と共有しにくい</h3>
+      <p>グループセッションでKGI〜KDIの進捗を見せるには準備が必要だった。URLを1つ共有するだけで、ログイン不要でボード全体を閲覧できる読み取り専用ビューを用意した。</p>
+    </div>
+  </div>
+
+  <div class="pane-map">
+    <div class="pane-map-label">4つの課題を 4ペインに割り当てる</div>
+    <div class="pane-map-row">
+      <div class="pane-map-item pmc-1">
+        <div class="pane-map-item-pane">PANE 1</div>
+        <div class="pane-map-item-title">KGI＋課題</div>
+        <div class="pane-map-item-role">目標と課題を1ペインで把握</div>
+      </div>
+      <div class="pane-map-item pmc-2">
+        <div class="pane-map-item-pane">PANE 2</div>
+        <div class="pane-map-item-title">KPI</div>
+        <div class="pane-map-item-role">達成を測る中間指標を管理</div>
+      </div>
+      <div class="pane-map-item pmc-3">
+        <div class="pane-map-item-pane">PANE 3</div>
+        <div class="pane-map-item-title">KDI（TODO/DO/DONE）</div>
+        <div class="pane-map-item-role">今週やること・やっていること</div>
+      </div>
+      <div class="pane-map-item pmc-4">
+        <div class="pane-map-item-pane">PANE 4</div>
+        <div class="pane-map-item-title">Check / Action</div>
+        <div class="pane-map-item-role">振り返りと次の行動を記録</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 3: INGENUITY -->
+<div class="section" id="ingenuity">
+  <div class="section-num">
+    <div class="section-num-badge">3</div>
+    <div class="section-num-label">SECTION 3</div>
+  </div>
+  <h2>工夫したポイント</h2>
+  <p class="section-lead">
+    特にこだわったのは<br>
+    <strong>「KGI→KPI→KDIの階層を、機能を増やさずに体感できるようにすること」</strong>
+  </p>
+
+  <div class="ingenuity-list">
+
+    <div class="ingenuity-item">
+      <div class="ingenuity-icon ii-1">📊</div>
+      <div>
+        <h3>工夫① KDIの達成率がKPI→KGIへ自動で伝播する</h3>
+        <p>KDI（行動）の達成率（0〜100%）を入力するだけで、KPI（中間指標）の達成率・KGI（最終目標）の達成率が自動で更新される。「目標は今何%か」を毎回手計算する手間がゼロになる。</p>
+        <div class="hierarchy">
+          <div class="h-col hc-3">
+            <div class="h-col-label">KDI（行動指標）</div>
+            <div class="h-col-title">達成率を入力</div>
+            <div class="h-col-example">例：毎朝7時シャドーイング → 60%</div>
+          </div>
+          <div class="h-col hc-2">
+            <div class="h-col-label">KPI（中間指標）</div>
+            <div class="h-col-title">平均を自動計算</div>
+            <div class="h-col-example">例：シャドーイング継続率 → 73%（自動）</div>
+          </div>
+          <div class="h-col hc-1">
+            <div class="h-col-label">KGI（最終目標）</div>
+            <div class="h-col-title">平均を自動計算</div>
+            <div class="h-col-example">例：英語スピーキング → 67%（自動）</div>
+          </div>
+        </div>
+        <div class="callout"><strong>効果:</strong> KGIの達成率バーが動くのは、KDIを進めたときだけ。「行動すれば目標が前進する」という感覚が画面に表れる。</div>
+      </div>
+    </div>
+
+    <div class="ingenuity-item">
+      <div class="ingenuity-icon ii-2">🔄</div>
+      <div>
+        <h3>工夫② KDIのステータスをTODO / DO / DONEの3段階で管理する</h3>
+        <p>KDI（行動）は「まだやっていない（TODO）」「今週やっている（DO）」「完了した（DONE）」の3ステータスで管理する。ステータスバッジをクリックするだけで切り替わり、DONEにすると達成率が自動で100%になる。</p>
+        <div class="status-row">
+          <div class="status-badge sb-todo">TODO</div>
+          <div class="sb-arrow">→</div>
+          <div class="status-badge sb-do">DO</div>
+          <div class="sb-arrow">→</div>
+          <div class="status-badge sb-done">DONE</div>
+          <div class="sb-arrow">→</div>
+          <div class="status-badge sb-todo">TODO</div>
+          <span style="font-size:12px;color:var(--slate-400);margin-left:4px">（クリックで循環）</span>
+        </div>
+        <div class="callout"><strong>効果:</strong> グループセッション中の画面共有で「このKDI、今週はDOまで来ました」と見せながら、その場でDONEに切り替えて全員に進捗を伝えられる。</div>
+      </div>
+    </div>
+
+    <div class="ingenuity-item">
+      <div class="ingenuity-icon ii-3">🔗</div>
+      <div>
+        <h3>工夫③ ログイン不要の読み取り専用URLでKGI〜KDIをまるごと共有</h3>
+        <p>「共有URLをコピー」ボタンを1回押すだけで、仲間が見られる専用URLがクリップボードに入る。受け取った側はGoogle アカウントも登録も不要。URLを開くだけでKGI・KPI・KDI・週次レビューの全ペインをそのまま閲覧できる。</p>
+        <div class="share-diagram">
+          <div class="share-box"><div class="share-box-icon">👤</div><div class="share-box-label">自分（オーナー）</div><div class="share-box-sub">Google ログイン<br>KGI〜KDIを編集</div></div>
+          <div class="share-arrow">→<br><span style="font-size:11px;font-weight:400;color:#94a3b8">URLを1つ共有</span></div>
+          <div class="share-box"><div class="share-box-icon">👥</div><div class="share-box-label">仲間（閲覧者）</div><div class="share-box-sub">ログイン不要<br>全ペインを閲覧</div></div>
+        </div>
+        <div class="callout"><strong>効果:</strong> グループセッションでの画面共有はもちろん、「このURLを見て」と送れば非同期でも進捗を共有できる。</div>
+      </div>
+    </div>
+
+    <div class="ingenuity-item">
+      <div class="ingenuity-icon ii-4">📅</div>
+      <div>
+        <h3>工夫④ Check/Actionは週単位で切り替えられる</h3>
+        <p>第4ペインには週ごとの振り返りが保存されており、左右の矢印で過去・未来の週に移動できる。「先週のActionを実行できたか」「2週前の振り返りに何を書いたか」を、KDIの状態を見ながらその場で確認できる。</p>
+        <div class="callout"><strong>効果:</strong> 週次PDCAのCycle（Plan→Do→Check→Action）が1画面で完結する。振り返りのためにNotionや別ノートを開く必要がなくなる。</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- SECTION 4: STRUGGLE -->
+<div class="section" id="struggle">
+  <div class="section-num">
+    <div class="section-num-badge">4</div>
+    <div class="section-num-label">SECTION 4</div>
+  </div>
+  <h2>苦戦したポイント</h2>
+  <p class="section-lead">
+    いちばん時間がかかったのは<br>
+    <strong>「KGI・KPI・KDIの違いを画面の構造に落とし込むこと」</strong>
+  </p>
+
+  <div class="struggle-list">
+
+    <div class="struggle-item">
+      <div class="struggle-item-num">苦戦 ①</div>
+      <h3>KPIとKDIをどう分けるか — 混在すると管理の意味が薄れる</h3>
+      <p>
+        最初は「課題（Issue）」と「タスク（Task）」という一般的な言葉で設計していた。しかし「計測する指標（KPI）」と「実際にやる行動（KDI）」は性質が異なる。KPIは「週3回レッスンを受けた率」のような計測値で、KDIは「レッスンの予約を入れる」という具体的行動だ。この2つを混在させると「何を管理しているのか」が曖昧になる。
+      </p>
+      <div class="conclusion">
+        <strong>結論:</strong> KPIペインとKDIペインを明示的に分け、KGI+課題を1ペインにまとめることで、4ペインが「目標→指標→行動→振り返り」という鬼速PDCAの思考ステップそのものになった。
+      </div>
+    </div>
+
+    <div class="struggle-item">
+      <div class="struggle-item-num">苦戦 ②</div>
+      <h3>TODO/DO/DONEの3ステータスを、AIが「未着手/進行中/完了」に戻してしまう</h3>
+      <p>
+        AIに実装を依頼すると、ステータスラベルを日本語の「未着手／進行中／完了」で生成してくる。KDIの文脈では「TODO（まだ手をつけていない）」「DO（今週取り組んでいる）」「DONE（完了した）」という英語3語のほうが、行動の勢いとともに伝わりやすい。しかし何度指示してもAIは汎用的な日本語ラベルに戻す傾向があった。
+      </p>
+      <div class="conclusion">
+        <strong>結論:</strong> ステータスの名前と意味を「KDIは行動なのでTODO/DO/DONEにする」と明示的に仕様書（グリルの決定事項）に書いてから実装した。仕様を言語化しておくことが、AIを正しく動かすための前提だと学んだ。
+      </div>
+    </div>
+
+    <div class="struggle-item">
+      <div class="struggle-item-num">苦戦 ③</div>
+      <h3>「どこまで作るか」の線引き — 5/16のグループセッションに間に合わせる</h3>
+      <p>
+        グリル（壁打ち）で要件を詰めると、「KDIをKPIに自動連携する」「ドラッグ&ドロップで並び替え」「KGIごとに達成期日のカウントダウン」など、追加したい機能がどんどん出てきた。しかしセッション日（5/16）まで4日しかなく、すべては作れない。
+      </p>
+      <div class="conclusion">
+        <strong>結論:</strong> 「今回はしない」リストをグリルの中で明示的に決めてから実装に入った。機能を足す議論より、削る議論のほうが難しく時間がかかった。これが今回いちばんの学びだった。
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══ SECTION 5: DATA STORAGE ═══ -->
+<div class="section" id="storage">
+  <div class="section-num">
+    <div class="section-num-badge">5</div>
+    <div class="section-num-label">SECTION 5</div>
+  </div>
+  <h2>何を・どこに保存するか</h2>
+  <p class="section-lead">
+    Webアプリの「保存」は1か所ではない。<br>
+    <strong>データ・コード・シークレットの3つは、それぞれ別の場所に入れる</strong>のが原則です。
+  </p>
+
+  <!-- 3 buckets -->
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:40px;">
+
+    <!-- Bucket 1: DB -->
+    <div style="border-radius:16px;overflow:hidden;border:1px solid #e2e8f0;">
+      <div style="background:#eef2ff;padding:16px 20px;border-bottom:1px solid #c7d2fe;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#4338ca;margin-bottom:4px;">BUCKET 1</div>
+        <div style="font-size:18px;font-weight:800;color:#312e81;">🗄️ Neon DB</div>
+        <div style="font-size:12px;color:#4338ca;margin-top:4px;">ユーザーごとに違う・時間とともに変わるもの</div>
+      </div>
+      <div style="background:white;padding:16px 20px;">
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="padding:10px 12px;background:#f5f3ff;border-radius:8px;border-left:3px solid #818cf8;">
+            <div style="font-size:12px;font-weight:700;color:#312e81;">KGI（最終目標）</div>
+            <div style="font-size:11px;color:#64748b;margin-top:2px;">ユーザーが入力・更新するデータ</div>
+          </div>
+          <div style="padding:10px 12px;background:#f5f3ff;border-radius:8px;border-left:3px solid #818cf8;">
+            <div style="font-size:12px;font-weight:700;color:#312e81;">課題・KPI・KDI</div>
+            <div style="font-size:11px;color:#64748b;margin-top:2px;">KGIに紐づいて増減するデータ</div>
+          </div>
+          <div style="padding:10px 12px;background:#f5f3ff;border-radius:8px;border-left:3px solid #818cf8;">
+            <div style="font-size:12px;font-weight:700;color:#312e81;">週次レビュー・Actionアイテム</div>
+            <div style="font-size:11px;color:#64748b;margin-top:2px;">週ごとに新しく作られるデータ</div>
+          </div>
+          <div style="padding:10px 12px;background:#f5f3ff;border-radius:8px;border-left:3px solid #818cf8;">
+            <div style="font-size:12px;font-weight:700;color:#312e81;">共有トークン（share_token）</div>
+            <div style="font-size:11px;color:#64748b;margin-top:2px;">ユーザーごとに自動生成される一意の値</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bucket 2: Repository -->
+    <div style="border-radius:16px;overflow:hidden;border:1px solid #e2e8f0;">
+      <div style="background:#f0fdf4;padding:16px 20px;border-bottom:1px solid #bbf7d0;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#15803d;margin-bottom:4px;">BUCKET 2</div>
+        <div style="font-size:18px;font-weight:800;color:#14532d;">📁 GitHub リポジトリ</div>
+        <div style="font-size:12px;color:#15803d;margin-top:4px;">誰がクローンしても同じ動作をする設計図</div>
+      </div>
+      <div style="background:white;padding:16px 20px;">
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="padding:10px 12px;background:#f0fdf4;border-radius:8px;border-left:3px solid #4ade80;">
+            <div style="font-size:12px;font-weight:700;color:#14532d;">TypeScript / React コード</div>
+            <div style="font-size:11px;color:#64748b;margin-top:2px;">画面・ロジック・コンポーネントの実装</div>
+          </div>
+          <div style="padding:10px 12px;background:#f0fdf4;border-radius:8px;border-left:3px solid #4ade80;">
+            <div style="font-size:12px;font-weight:700;color:#14532d;">SQLスキーマ（001_initial.sql）</div>
+            <div style="font-size:11px;color:#64748b;margin-top:2px;">「どんなテーブルを作るか」の設計書。データ本体ではない</div>
+          </div>
+          <div style="padding:10px 12px;background:#f0fdf4;border-radius:8px;border-left:3px solid #4ade80;">
+            <div style="font-size:12px;font-weight:700;color:#14532d;">package.json / 設定ファイル</div>
+            <div style="font-size:11px;color:#64748b;margin-top:2px;">どのライブラリをどのバージョンで使うかの定義</div>
+          </div>
+          <div style="padding:10px 12px;background:#f0fdf4;border-radius:8px;border-left:3px solid #4ade80;">
+            <div style="font-size:12px;font-weight:700;color:#14532d;">.env.local.example</div>
+            <div style="font-size:11px;color:#64748b;margin-top:2px;">「どんな環境変数が必要か」の雛形（値は書かない）</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bucket 3: Secrets -->
+    <div style="border-radius:16px;overflow:hidden;border:1px solid #e2e8f0;">
+      <div style="background:#fff7ed;padding:16px 20px;border-bottom:1px solid #fed7aa;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#c2410c;margin-bottom:4px;">BUCKET 3</div>
+        <div style="font-size:18px;font-weight:800;color:#7c2d12;">🔐 シークレット</div>
+        <div style="font-size:12px;color:#c2410c;margin-top:4px;">漏洩すると第三者にDBを操作される情報</div>
+      </div>
+      <div style="background:white;padding:16px 20px;">
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="padding:10px 12px;background:#fff7ed;border-radius:8px;border-left:3px solid #fb923c;">
+            <div style="font-size:12px;font-weight:700;color:#7c2d12;">.env.local（ローカル）</div>
+            <div style="font-size:11px;color:#64748b;margin-top:2px;">.gitignoreで除外済み。自分のPCにだけ存在する</div>
+          </div>
+          <div style="padding:10px 12px;background:#fff7ed;border-radius:8px;border-left:3px solid #fb923c;">
+            <div style="font-size:12px;font-weight:700;color:#7c2d12;">Vercel Environment Variables</div>
+            <div style="font-size:11px;color:#64748b;margin-top:2px;">本番サーバーにだけ安全に渡す。GitHubには入れない</div>
+          </div>
+          <div style="padding:10px 12px;background:#fef2f2;border-radius:8px;border-left:3px solid #f87171;">
+            <div style="font-size:12px;font-weight:700;color:#991b1b;">⚠️ GitHubに絶対に入れないもの</div>
+            <div style="font-size:11px;color:#64748b;margin-top:2px;">Neon接続文字列（DATABASE_URL）・NextAuth シークレット。一度公開すると即座に悪用されるリスク</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Rule summary -->
+  <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:24px;">
+    <div style="font-size:13px;font-weight:600;color:#94a3b8;margin-bottom:16px;letter-spacing:.06em;text-transform:uppercase;">3つに分ける判断ルール</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+      <div style="text-align:center;padding:16px;background:#f8fafc;border-radius:10px;">
+        <div style="font-size:22px;margin-bottom:6px;">🗄️</div>
+        <div style="font-size:12px;font-weight:700;margin-bottom:4px;">DBに入れる</div>
+        <div style="font-size:11px;color:#64748b;">「ユーザーごとに違う」<br>「時間とともに変わる」</div>
+      </div>
+      <div style="text-align:center;padding:16px;background:#f8fafc;border-radius:10px;">
+        <div style="font-size:22px;margin-bottom:6px;">📁</div>
+        <div style="font-size:12px;font-weight:700;margin-bottom:4px;">リポジトリに入れる</div>
+        <div style="font-size:11px;color:#64748b;">「誰がクローンしても<br>同じ動作をする」</div>
+      </div>
+      <div style="text-align:center;padding:16px;background:#f8fafc;border-radius:10px;">
+        <div style="font-size:22px;margin-bottom:6px;">🔐</div>
+        <div style="font-size:12px;font-weight:700;margin-bottom:4px;">シークレットに置く</div>
+        <div style="font-size:11px;color:#64748b;">「漏洩すると<br>悪用されるもの」</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  AI-Driven School｜月次課題 第3回「ひな形を自分の画面に仕上げる」<br>
+  <span>鬼速PDCA Webアプリ</span>　制作：受講生
+</footer>
+</body>
+</html>

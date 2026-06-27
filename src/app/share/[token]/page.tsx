@@ -1,39 +1,21 @@
+import { notFound } from 'next/navigation'
 import sql from '@/lib/db'
 import type { Workspace, Goal, Issue, Task, Review, ActionItem } from '@/lib/types'
 import Board from '@/components/Board'
-import ShareButton from '@/components/ShareButton'
 
-// 固定のソロユーザーID（認証なしの単一ユーザー運用）
-const SOLO_USER_ID = '00000000-0000-0000-0000-000000000001'
+interface Props {
+  params: Promise<{ token: string }>
+}
 
-export default async function HomePage() {
-  // ソロユーザーを確保
-  await sql.query(
-    `INSERT INTO users (id, google_id, email, name)
-     VALUES ($1, 'solo', 'solo@local', '自分')
-     ON CONFLICT (id) DO NOTHING`,
-    [SOLO_USER_ID]
+export default async function SharePage({ params }: Props) {
+  const { token } = await params
+
+  const workspaceRows = await sql.query(
+    'SELECT * FROM workspaces WHERE share_token = $1 LIMIT 1',
+    [token]
   )
-
-  // ワークスペース取得（なければ作成）
-  let workspaceRows = await sql.query(
-    'SELECT * FROM workspaces WHERE user_id = $1 LIMIT 1',
-    [SOLO_USER_ID]
-  )
-
-  if (!workspaceRows[0]) {
-    workspaceRows = await sql.query(
-      `INSERT INTO workspaces (user_id, name)
-       VALUES ($1, '鬼速PDCAボード')
-       RETURNING *`,
-      [SOLO_USER_ID]
-    )
-  }
-
   const workspace = workspaceRows[0] as unknown as Workspace
-  if (!workspace) {
-    return <div className="p-8 text-red-600">ワークスペースの作成に失敗しました。</div>
-  }
+  if (!workspace) notFound()
 
   const [goals, issues, tasks, reviews, actionItems] = await Promise.all([
     sql.query('SELECT * FROM goals WHERE workspace_id = $1 ORDER BY sort_order, created_at', [workspace.id]),
@@ -68,12 +50,8 @@ export default async function HomePage() {
   return (
     <div className="flex flex-col h-screen">
       <header className="flex items-center justify-between px-5 py-3 bg-white border-b border-slate-200 shrink-0 shadow-sm">
-        <div className="flex items-center gap-3">
-          <span className="text-lg font-bold text-slate-800">⚡️ {workspace.name}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <ShareButton shareToken={workspace.share_token} />
-        </div>
+        <span className="text-lg font-bold text-slate-800">⚡️ {workspace.name}</span>
+        <span className="text-xs bg-slate-100 text-slate-500 px-3 py-1 rounded-full">閲覧専用</span>
       </header>
       <div className="flex-1 overflow-hidden">
         <Board
@@ -83,6 +61,7 @@ export default async function HomePage() {
           initialTasks={tasks as unknown as Task[]}
           initialReviews={reviews as unknown as Review[]}
           initialActionItems={actionItems as unknown as ActionItem[]}
+          readOnly
         />
       </div>
     </div>
