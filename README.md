@@ -1,36 +1,83 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 鬼速PDCA
 
-## Getting Started
+第二領域（重要だが緊急でない）の目標を、**KGI → KPI → KDI → Check/Action** の4ペインで1画面管理する Web アプリです。
 
-First, run the development server:
+## 機能
+
+- **4ペインボード** — 最終目標（KGI）・課題（KPI）・行動指標（KDI）・週次振り返りを横並びで表示
+- **達成率の自動集計** — KDI の達成率が KPI / KGI に自動反映
+- **KDI ステータス** — TODO / DO / DONE の3段階
+- **インライン編集** — タイトルをダブルクリックで修正
+- **共有 URL** — 読み取り専用ビュー（ログイン不要）
+- **プレビューモード** — `/preview` で DB なしのデモ表示
+
+## 技術スタック
+
+| 項目 | 技術 |
+|------|------|
+| フレームワーク | Next.js 16（App Router） |
+| UI | React 19, Tailwind CSS 4, shadcn/ui |
+| データベース | Neon PostgreSQL |
+| 認証 | NextAuth + Google OAuth（コード実装済み、メイン画面はソロユーザー運用） |
+
+## セットアップ
+
+### 1. 依存関係のインストール
+
+```bash
+npm install
+```
+
+### 2. 環境変数
+
+`.env.example` をコピーして `.env.local` を作成し、値を設定します。
+
+```bash
+cp .env.example .env.local
+```
+
+**最低限必要な変数**
+
+| 変数 | 説明 |
+|------|------|
+| `DATABASE_URL` | Neon の接続文字列 |
+
+`/login`（Google ログイン）を使う場合は `NEXTAUTH_*` と `GOOGLE_*` も設定してください。
+
+### 3. データベース
+
+[Neon](https://neon.tech) でプロジェクトを作成し、SQL Editor で `db/schema.sql` を実行します。
+
+### 4. 開発サーバー
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+http://localhost:3000 を開きます。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 5. デモデータ（任意）
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run seed:demo      # 既存データにタスク・レビューを追加
+npm run seed:preview   # /preview と同じ内容に差し替え
+```
 
-## Learn More
+## ルート一覧
 
-To learn more about Next.js, take a look at the following resources:
+| パス | 説明 |
+|------|------|
+| `/` | メインボード（編集可能） |
+| `/preview` | モックデータの読み取り専用プレビュー |
+| `/share/[token]` | 共有トークンによる読み取り専用表示 |
+| `/login` | Google ログイン |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## デプロイ（Vercel）
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. GitHub リポジトリを Vercel にインポート
+2. 環境変数に `DATABASE_URL`（および必要なら NextAuth / Google 関連）を設定
+3. デプロイ
 
-## Deploy on Vercel
+## ライセンス
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+個人学習・課題提出用プロジェクト
