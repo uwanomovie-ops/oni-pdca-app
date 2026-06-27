@@ -72,6 +72,11 @@ npm run seed:preview   # /preview と同じ内容に差し替え
 | `/share/[token]` | 共有トークンによる読み取り専用表示 |
 | `/login` | Google ログイン |
 
+## 公開 URL
+
+- **本番:** https://oni-pdca-app.vercel.app
+- **プレビュー（DB不要）:** https://oni-pdca-app.vercel.app/preview
+
 ## デプロイ（Vercel）
 
 1. GitHub リポジトリを Vercel にインポート
