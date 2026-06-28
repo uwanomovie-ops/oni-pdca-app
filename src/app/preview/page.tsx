@@ -30,7 +30,17 @@ const tasks: Task[] = [
 
 const weekStart = getWeekStart()
 const reviews: Review[] = [
-  { id: 'r1', workspace_id: 'w1', goal_id: 'g1', week_start: weekStart, reflection: 'シャドーイングは継続できている。英会話は1回しかできなかった。来週は必ず3回やる。', created_at: '' },
+  {
+    id: 'r1',
+    workspace_id: 'w1',
+    goal_id: 'g1',
+    week_start: weekStart,
+    reflection: 'シャドーイングは継続できている。英会話は1回しかできなかった。来週は必ず3回やる。',
+    coach_feedback: null,
+    coach_proposals: null,
+    coach_applied_log: null,
+    created_at: '',
+  },
 ]
 
 const actionItems: ActionItem[] = [

@@ -52,14 +52,17 @@ create table if not exists tasks (
   created_at       timestamptz not null default now()
 );
 
--- Weekly Reviews (週次振り返り)
+-- Weekly Reviews (週次振り返り + AIコーチ)
 create table if not exists reviews (
-  id            uuid primary key default gen_random_uuid(),
-  workspace_id  uuid references workspaces(id) on delete cascade not null,
-  goal_id       uuid references goals(id) on delete cascade,
-  week_start    date not null,
-  reflection    text,
-  created_at    timestamptz not null default now(),
+  id                 uuid primary key default gen_random_uuid(),
+  workspace_id       uuid references workspaces(id) on delete cascade not null,
+  goal_id            uuid references goals(id) on delete cascade,
+  week_start         date not null,
+  reflection         text,
+  coach_feedback     text,
+  coach_proposals    jsonb,
+  coach_applied_log  jsonb,
+  created_at         timestamptz not null default now(),
   unique (workspace_id, goal_id, week_start)
 );
 

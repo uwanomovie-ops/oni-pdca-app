@@ -39,13 +39,45 @@ export interface Task {
   created_at: string
 }
 
+export type AdjustProposalType = 'add_kdi' | 'update_title' | 'update_due_date' | 'update_status'
+
+export interface AdjustProposal {
+  id: string
+  type: AdjustProposalType
+  kdi_id?: string
+  issue_id?: string
+  title?: string
+  due_date?: string | null
+  status?: Status
+  reason: string
+}
+
+export interface AppliedAdjustLog {
+  proposal_id: string
+  type: AdjustProposalType
+  applied_at: string
+  summary: string
+}
+
 export interface Review {
   id: string
   workspace_id: string
   goal_id: string | null
   week_start: string
   reflection: string | null
+  coach_feedback: string | null
+  coach_proposals: AdjustProposal[] | null
+  coach_applied_log: AppliedAdjustLog[] | null
   created_at: string
+}
+
+export interface CoachWeekHistory {
+  week_start: string
+  reflection: string | null
+  action_items: { title: string; is_done: boolean }[]
+  coach_feedback: string | null
+  applied_count: number
+  pending_action_titles: string[]
 }
 
 export interface ActionItem {

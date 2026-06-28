@@ -2,30 +2,42 @@
 
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
-import type { Workspace, Goal, Review, ActionItem } from '@/lib/types'
+import type { Workspace, Goal, Issue, Task, Review, ActionItem } from '@/lib/types'
 import { getWeekStart, formatWeekLabel } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import AICoachPanel from '@/components/AICoachPanel'
 import { ClipboardList, Plus, ChevronLeft, ChevronRight, Check } from 'lucide-react'
 
 interface Props {
   workspace: Workspace
   selectedGoal: Goal | null
+  issues: Issue[]
+  tasks: Task[]
   reviews: Review[]
   actionItems: ActionItem[]
   onRefresh: () => Promise<void>
   readOnly: boolean
+  hideCoach?: boolean
 }
 
 export default function ReviewPane({
-  workspace, selectedGoal, reviews, actionItems, onRefresh, readOnly,
+  workspace,
+  selectedGoal,
+  issues,
+  tasks,
+  reviews,
+  actionItems,
+  onRefresh,
+  readOnly,
+  hideCoach = false,
 }: Props) {
   const [weekStart, setWeekStart] = useState(getWeekStart())
   const [reflection, setReflection] = useState('')
   const [savingReflection, setSavingReflection] = useState(false)
-  const [newAction, setNewAction] = useState('')
-  const [addingAction, setAddingAction] = useState(false)
+  const [newAdjust, setNewAdjust] = useState('')
+  const [addingAdjust, setAddingAdjust] = useState(false)
 
   const currentReview = reviews.find(
     r => r.goal_id === (selectedGoal?.id ?? null) && r.week_start === weekStart
@@ -35,7 +47,7 @@ export default function ReviewPane({
     setReflection(currentReview?.reflection ?? '')
   }, [currentReview?.id, weekStart, selectedGoal?.id])
 
-  const currentActionItems = currentReview
+  const currentAdjustItems = currentReview
     ? actionItems.filter(a => a.review_id === currentReview.id)
     : []
 
@@ -59,27 +71,27 @@ export default function ReviewPane({
     await onRefresh()
   }
 
-  const handleAddAction = async (e: React.FormEvent) => {
+  const handleAddAdjust = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newAction.trim()) return
-    setAddingAction(true)
+    if (!newAdjust.trim()) return
+    setAddingAdjust(true)
     const reviewId = await ensureReview()
     await api.post('/api/action-items', {
       review_id: reviewId,
-      title: newAction.trim(),
-      sort_order: currentActionItems.length,
+      title: newAdjust.trim(),
+      sort_order: currentAdjustItems.length,
     })
-    setNewAction('')
-    setAddingAction(false)
+    setNewAdjust('')
+    setAddingAdjust(false)
     await onRefresh()
   }
 
-  const handleToggleAction = async (item: ActionItem) => {
+  const handleToggleAdjust = async (item: ActionItem) => {
     await api.patch(`/api/action-items/${item.id}`, { is_done: !item.is_done })
     await onRefresh()
   }
 
-  const handleDeleteAction = async (id: string) => {
+  const handleDeleteAdjust = async (id: string) => {
     await api.delete(`/api/action-items/${id}`)
     await onRefresh()
   }
@@ -92,22 +104,19 @@ export default function ReviewPane({
 
   return (
     <div className="flex flex-col w-1/4 min-w-0 bg-background">
-      {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-amber-50 shrink-0">
         <div className="flex items-center gap-2">
           <ClipboardList className="w-4 h-4 text-amber-600" />
-          <span className="text-sm font-semibold text-amber-800">Check / Action</span>
+          <span className="text-sm font-semibold text-amber-800">Check / Adjust</span>
         </div>
       </div>
 
-      {/* Context */}
       {selectedGoal && (
         <div className="px-4 py-2 border-b border-border bg-muted/30 shrink-0">
           <p className="text-xs text-muted-foreground truncate">▶ {selectedGoal.title}</p>
         </div>
       )}
 
-      {/* Week navigation */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border shrink-0">
         <Button variant="ghost" size="icon-xs" onClick={() => shiftWeek(-1)}>
           <ChevronLeft />
@@ -118,7 +127,6 @@ export default function ReviewPane({
         </Button>
       </div>
 
-      {/* Content */}
       <div className="flex-1 overflow-y-auto pane-scroll p-4 space-y-5">
         {!selectedGoal && (
           <p className="text-xs text-muted-foreground text-center py-8">← 目標を選択してください</p>
@@ -126,7 +134,6 @@ export default function ReviewPane({
 
         {selectedGoal && (
           <>
-            {/* Reflection */}
             <div>
               <h3 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
                 振り返り（Check）
@@ -158,21 +165,36 @@ export default function ReviewPane({
               )}
             </div>
 
-            {/* Action Items */}
+            {!readOnly && !hideCoach && (
+              <AICoachPanel
+                goal={selectedGoal}
+                issues={issues}
+                tasks={tasks}
+                reviews={reviews}
+                actionItems={actionItems}
+                weekStart={weekStart}
+                reflection={reflection}
+                currentReview={currentReview}
+                ensureReview={ensureReview}
+                onRefresh={onRefresh}
+                onReflectionChange={setReflection}
+              />
+            )}
+
             <div>
               <h3 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
-                Actionアイテム
+                手動 Adjust
               </h3>
               <div className="space-y-2">
-                {currentActionItems.length === 0 && (
+                {currentAdjustItems.length === 0 && (
                   <p className="text-xs text-muted-foreground">
-                    {readOnly ? 'アイテムなし' : 'Actionアイテムを追加しましょう'}
+                    {readOnly ? 'アイテムなし' : '来週に向けた Adjust を追加しましょう'}
                   </p>
                 )}
-                {currentActionItems.map(item => (
+                {currentAdjustItems.map(item => (
                   <div key={item.id} className="flex items-center gap-2 group">
                     <button
-                      onClick={() => !readOnly && handleToggleAction(item)}
+                      onClick={() => !readOnly && handleToggleAdjust(item)}
                       disabled={readOnly}
                       className={`w-5 h-5 rounded-md border-2 shrink-0 flex items-center justify-center transition-colors ${
                         item.is_done
@@ -189,7 +211,7 @@ export default function ReviewPane({
                       <Button
                         variant="ghost"
                         size="icon-xs"
-                        onClick={() => handleDeleteAction(item.id)}
+                        onClick={() => handleDeleteAdjust(item.id)}
                         className="opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-600 hover:bg-red-50"
                       >
                         <span className="text-xs">✕</span>
@@ -199,17 +221,17 @@ export default function ReviewPane({
                 ))}
 
                 {!readOnly && (
-                  <form onSubmit={handleAddAction} className="flex gap-2 mt-2">
+                  <form onSubmit={handleAddAdjust} className="flex gap-2 mt-2">
                     <Input
-                      value={newAction}
-                      onChange={e => setNewAction(e.target.value)}
-                      placeholder="新しいActionを追加..."
+                      value={newAdjust}
+                      onChange={e => setNewAdjust(e.target.value)}
+                      placeholder="新しい Adjust を追加..."
                       className="flex-1 text-sm"
                     />
                     <Button
                       type="submit"
                       size="icon"
-                      disabled={addingAction || !newAction.trim()}
+                      disabled={addingAdjust || !newAdjust.trim()}
                       className="bg-amber-500 hover:bg-amber-600 shrink-0"
                     >
                       <Plus />
@@ -224,7 +246,7 @@ export default function ReviewPane({
 
       <div className="px-4 py-2 border-t border-border bg-muted/30 shrink-0">
         <p className="text-xs text-muted-foreground">
-          {currentActionItems.filter(a => a.is_done).length} / {currentActionItems.length} 完了
+          {currentAdjustItems.filter(a => a.is_done).length} / {currentAdjustItems.length} 完了
         </p>
       </div>
     </div>

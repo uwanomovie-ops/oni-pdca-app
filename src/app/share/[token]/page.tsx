@@ -35,7 +35,8 @@ export default async function SharePage({ params }: Props) {
       [workspace.id]
     ),
     sql.query(
-      'SELECT * FROM reviews WHERE workspace_id = $1 ORDER BY week_start DESC',
+      `SELECT id, workspace_id, goal_id, week_start, reflection, created_at
+       FROM reviews WHERE workspace_id = $1 ORDER BY week_start DESC`,
       [workspace.id]
     ),
     sql.query(
