@@ -36,6 +36,7 @@ export interface Task {
   achievement_rate: number
   due_date: string | null
   sort_order: number
+  ai_coach_added: boolean
   created_at: string
 }
 

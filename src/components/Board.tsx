@@ -79,11 +79,13 @@ export default function Board({
       <ReviewPane
         workspace={workspace}
         selectedGoal={selectedGoal}
+        selectedIssue={selectedIssue}
         issues={issues}
         tasks={tasks}
         reviews={reviews}
         actionItems={actionItems}
         onRefresh={loadData}
+        onSelectIssue={setSelectedIssueId}
         readOnly={readOnly}
         hideCoach={readOnly}
       />

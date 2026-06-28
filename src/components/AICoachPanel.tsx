@@ -28,6 +28,7 @@ interface Props {
   currentReview: Review | null
   ensureReview: () => Promise<string>
   onRefresh: () => Promise<void>
+  onSelectIssue?: (issueId: string) => void
   onReflectionChange: (text: string) => void
 }
 
@@ -76,6 +77,17 @@ function proposalTypeLabel(type: AdjustProposal['type']): string {
   }[type]
 }
 
+function isNewKdiProposal(p: AdjustProposal): boolean {
+  return p.type === 'add_kdi'
+}
+
+/** 新規 KDI 追加のみ初期選択（既存 KDI の更新はオプトイン） */
+function defaultSelectedIds(proposals: AdjustProposal[], applied: Set<string>): Set<string> {
+  return new Set(
+    proposals.filter(p => isNewKdiProposal(p) && !applied.has(p.id)).map(p => p.id)
+  )
+}
+
 export default function AICoachPanel({
   goal,
   issues,
@@ -87,6 +99,7 @@ export default function AICoachPanel({
   currentReview,
   ensureReview,
   onRefresh,
+  onSelectIssue,
   onReflectionChange,
 }: Props) {
   const [open, setOpen] = useState(false)
@@ -94,6 +107,7 @@ export default function AICoachPanel({
   const [draftingReflection, setDraftingReflection] = useState(false)
   const [adopting, setAdopting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [applySuccess, setApplySuccess] = useState<string | null>(null)
   const [feedback, setFeedback] = useState('')
   const [coachFeedback, setCoachFeedback] = useState<string | null>(
     currentReview?.coach_feedback ?? null
@@ -123,7 +137,7 @@ export default function AICoachPanel({
     setCoachFeedback(currentReview?.coach_feedback ?? null)
     const saved = parseJsonField<AdjustProposal[]>(currentReview?.coach_proposals) ?? []
     setProposals(saved)
-    setSelectedIds(new Set(saved.filter(p => !applied.has(p.id)).map(p => p.id)))
+    setSelectedIds(defaultSelectedIds(saved, applied))
   }, [
     currentReview?.id,
     currentReview?.coach_feedback,
@@ -137,6 +151,7 @@ export default function AICoachPanel({
     await api.patch(`/api/reviews/${reviewId}`, {
       coach_feedback: fb,
       coach_proposals: props,
+      coach_applied_log: null,
     })
   }
 
@@ -159,7 +174,7 @@ export default function AICoachPanel({
 
       setCoachFeedback(result.feedback)
       setProposals(result.proposals)
-      setSelectedIds(new Set(result.proposals.map(p => p.id)))
+      setSelectedIds(defaultSelectedIds(result.proposals, new Set()))
 
       const reviewId = await ensureReview()
       await saveCoachToReview(reviewId, result.feedback, result.proposals)
@@ -174,7 +189,11 @@ export default function AICoachPanel({
 
   const handleOpen = () => {
     setOpen(true)
-    if (!coachFeedback && pendingProposals.length === 0) {
+    const saved = parseJsonField<AdjustProposal[]>(currentReview?.coach_proposals) ?? []
+    const log = parseJsonField<AppliedAdjustLog[]>(currentReview?.coach_applied_log) ?? []
+    const applied = new Set(log.map(l => l.proposal_id))
+    const hasPending = saved.some(p => !applied.has(p.id))
+    if (saved.length === 0 || !hasPending) {
       generate()
     }
   }
@@ -216,35 +235,75 @@ export default function AICoachPanel({
 
     setAdopting(true)
     setError(null)
+    setApplySuccess(null)
     try {
       const reviewId = await ensureReview()
       const existingLog = parseJsonField<AppliedAdjustLog[]>(currentReview?.coach_applied_log) ?? []
       const newLog: AppliedAdjustLog[] = [...existingLog]
+      let added = 0
+      let updated = 0
+      let skipped = 0
+      let focusIssueId: string | null = null
 
       for (const p of toApply) {
         switch (p.type) {
           case 'add_kdi': {
             const issueTasks = goalTasks.filter(t => t.issue_id === p.issue_id)
-            const created = await api.post('/api/tasks', {
-              issue_id: p.issue_id,
-              title: p.title,
-              due_date: p.due_date ?? null,
-              sort_order: issueTasks.length,
-            }) as { id: string }
-            if (p.status && p.status !== 'todo') {
-              await api.patch(`/api/tasks/${created.id}`, { status: p.status })
+            const duplicate = issueTasks.some(
+              t => t.title === p.title && t.ai_coach_added
+            )
+            if (!duplicate) {
+              const created = await api.post('/api/tasks', {
+                issue_id: p.issue_id,
+                title: p.title,
+                due_date: p.due_date ?? null,
+                sort_order: issueTasks.length,
+                ai_coach_added: true,
+              }) as { id: string }
+              if (p.status && p.status !== 'todo') {
+                await api.patch(`/api/tasks/${created.id}`, { status: p.status })
+              }
+              added++
+              if (p.issue_id) focusIssueId = p.issue_id
+            } else {
+              skipped++
             }
             break
           }
-          case 'update_title':
-            await api.patch(`/api/tasks/${p.kdi_id}`, { title: p.title })
+          case 'update_title': {
+            const task = goalTasks.find(t => t.id === p.kdi_id)
+            if (task && task.title !== p.title) {
+              await api.patch(`/api/tasks/${p.kdi_id}`, { title: p.title })
+              updated++
+              focusIssueId = task.issue_id
+            } else {
+              skipped++
+            }
             break
-          case 'update_due_date':
-            await api.patch(`/api/tasks/${p.kdi_id}`, { due_date: p.due_date })
+          }
+          case 'update_due_date': {
+            const task = goalTasks.find(t => t.id === p.kdi_id)
+            const nextDue = p.due_date ?? null
+            if (task && task.due_date !== nextDue) {
+              await api.patch(`/api/tasks/${p.kdi_id}`, { due_date: nextDue })
+              updated++
+              focusIssueId = task.issue_id
+            } else {
+              skipped++
+            }
             break
-          case 'update_status':
-            await api.patch(`/api/tasks/${p.kdi_id}`, { status: p.status })
+          }
+          case 'update_status': {
+            const task = goalTasks.find(t => t.id === p.kdi_id)
+            if (task && task.status !== p.status) {
+              await api.patch(`/api/tasks/${p.kdi_id}`, { status: p.status })
+              updated++
+              focusIssueId = task.issue_id
+            } else {
+              skipped++
+            }
             break
+          }
         }
         newLog.push({
           proposal_id: p.id,
@@ -256,6 +315,17 @@ export default function AICoachPanel({
 
       await api.patch(`/api/reviews/${reviewId}`, { coach_applied_log: newLog })
       await onRefresh()
+      if (focusIssueId) onSelectIssue?.(focusIssueId)
+
+      const parts: string[] = []
+      if (added > 0) parts.push(`KDI追加 ${added}件`)
+      if (updated > 0) parts.push(`更新 ${updated}件`)
+      if (skipped > 0) parts.push(`変更なし ${skipped}件`)
+      if (parts.length === 0) {
+        setApplySuccess('反映できる変更はありませんでした（すでに同じ状態です）')
+      } else {
+        setApplySuccess(`左の KDI ペインに反映しました（${parts.join('・')}）`)
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : '採用に失敗しました')
     } finally {
@@ -306,6 +376,12 @@ export default function AICoachPanel({
         <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded px-2 py-1.5">{error}</p>
       )}
 
+      {applySuccess && (
+        <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded px-2 py-1.5">
+          {applySuccess}
+        </p>
+      )}
+
       {coachFeedback && !loading && (
         <div className="rounded-md border border-amber-100 bg-amber-50/80 p-2">
           <p className="text-[10px] font-semibold text-amber-800 mb-1">コーチ所見</p>
@@ -313,35 +389,75 @@ export default function AICoachPanel({
         </div>
       )}
 
-      {pendingProposals.length > 0 && !loading && (
+      {proposals.length > 0 && !loading && (
         <div className="space-y-1.5 max-h-40 overflow-y-auto pane-scroll">
           <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
             Adjust 提案
           </p>
-          {pendingProposals.map(p => (
+          <p className="text-[10px] text-muted-foreground">
+            KDI追加のみ初期選択。既存KDIの変更は必要な場合のみチェック
+          </p>
+          {proposals.map(p => {
+            const adopted = appliedIds.has(p.id)
+            const isNew = isNewKdiProposal(p)
+            const selected = adopted || selectedIds.has(p.id)
+            return (
             <label
               key={p.id}
-              className="flex gap-2 rounded-md border border-slate-200 p-2 bg-slate-50 cursor-pointer"
+              className={`flex gap-2 rounded-md border p-2 cursor-pointer transition-colors ${
+                adopted
+                  ? 'border-emerald-200 bg-emerald-50/60 cursor-default'
+                  : isNew
+                    ? selected
+                      ? 'border-amber-300 bg-amber-50/80'
+                      : 'border-amber-200 bg-amber-50/40'
+                    : selected
+                      ? 'border-slate-300 bg-slate-100'
+                      : 'border-slate-200 bg-slate-50/40 opacity-75'
+              }`}
             >
               <input
                 type="checkbox"
-                checked={selectedIds.has(p.id)}
-                onChange={() => toggleProposal(p.id)}
-                className="mt-0.5 shrink-0"
+                checked={selected}
+                disabled={adopted}
+                onChange={() => !adopted && toggleProposal(p.id)}
+                className={`mt-0.5 shrink-0 ${!isNew && !adopted ? 'accent-slate-400' : ''}`}
               />
               <div className="min-w-0">
-                <p className="text-[10px] font-medium text-amber-800">{proposalTypeLabel(p.type)}</p>
-                <p className="text-xs text-slate-800">{proposalSummary(p, goalTasks, goalIssues)}</p>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <p className={`text-[10px] font-medium ${isNew ? 'text-amber-800' : 'text-slate-500'}`}>
+                    {proposalTypeLabel(p.type)}
+                  </p>
+                  {!adopted && isNew && (
+                    <span className="text-[9px] font-semibold text-amber-700 bg-amber-100 px-1 rounded">
+                      新規
+                    </span>
+                  )}
+                  {!adopted && !isNew && (
+                    <span className="text-[9px] font-semibold text-slate-500 bg-slate-100 px-1 rounded">
+                      既存KDI
+                    </span>
+                  )}
+                  {adopted && (
+                    <span className="text-[9px] font-semibold text-emerald-700 bg-emerald-100 px-1 rounded">
+                      採用済
+                    </span>
+                  )}
+                </div>
+                <p className={`text-xs ${isNew ? 'text-slate-800' : 'text-slate-600'}`}>
+                  {proposalSummary(p, goalTasks, goalIssues)}
+                </p>
                 <p className="text-[10px] text-slate-500 mt-0.5">{p.reason}</p>
               </div>
             </label>
-          ))}
+            )
+          })}
         </div>
       )}
 
       {proposals.length > 0 && pendingProposals.length === 0 && !loading && (
         <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded px-2 py-1.5">
-          すべての Adjust 提案を採用済みです
+          すべて採用済みです。「再生成」または「厳しめ」で新しい提案を出せます
         </p>
       )}
 

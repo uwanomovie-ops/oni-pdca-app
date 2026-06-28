@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import type { Workspace, Goal, Issue, Task, Review, ActionItem } from '@/lib/types'
-import { getWeekStart, formatWeekLabel } from '@/lib/utils'
+import { getWeekStart, formatWeekLabel, shiftWeekStart } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -13,11 +13,13 @@ import { ClipboardList, Plus, ChevronLeft, ChevronRight, Check } from 'lucide-re
 interface Props {
   workspace: Workspace
   selectedGoal: Goal | null
+  selectedIssue: Issue | null
   issues: Issue[]
   tasks: Task[]
   reviews: Review[]
   actionItems: ActionItem[]
   onRefresh: () => Promise<void>
+  onSelectIssue?: (issueId: string) => void
   readOnly: boolean
   hideCoach?: boolean
 }
@@ -25,11 +27,13 @@ interface Props {
 export default function ReviewPane({
   workspace,
   selectedGoal,
+  selectedIssue,
   issues,
   tasks,
   reviews,
   actionItems,
   onRefresh,
+  onSelectIssue,
   readOnly,
   hideCoach = false,
 }: Props) {
@@ -97,9 +101,7 @@ export default function ReviewPane({
   }
 
   const shiftWeek = (delta: number) => {
-    const d = new Date(weekStart + 'T00:00:00')
-    d.setDate(d.getDate() + delta * 7)
-    setWeekStart(d.toISOString().split('T')[0])
+    setWeekStart(shiftWeekStart(weekStart, delta))
   }
 
   return (
@@ -112,8 +114,12 @@ export default function ReviewPane({
       </div>
 
       {selectedGoal && (
-        <div className="px-4 py-2 border-b border-border bg-muted/30 shrink-0">
+        <div className="px-4 py-2 border-b border-border bg-muted/30 shrink-0 space-y-1">
           <p className="text-xs text-muted-foreground truncate">▶ {selectedGoal.title}</p>
+          <p className="text-[10px] text-amber-700/80">
+            AIコーチは KGI 全体（全KPI・KDI）をレビューします
+            {selectedIssue ? ` — 課題「${selectedIssue.title.length > 14 ? selectedIssue.title.slice(0, 14) + '…' : selectedIssue.title}」選択中` : ''}
+          </p>
         </div>
       )}
 
@@ -121,7 +127,10 @@ export default function ReviewPane({
         <Button variant="ghost" size="icon-xs" onClick={() => shiftWeek(-1)}>
           <ChevronLeft />
         </Button>
-        <span className="text-xs font-medium text-foreground">{formatWeekLabel(weekStart)}</span>
+        <span className="text-xs font-medium text-foreground">
+          {formatWeekLabel(weekStart)}
+          <span className="text-muted-foreground font-normal ml-1">（日〜土）</span>
+        </span>
         <Button variant="ghost" size="icon-xs" onClick={() => shiftWeek(1)}>
           <ChevronRight />
         </Button>
@@ -177,6 +186,7 @@ export default function ReviewPane({
                 currentReview={currentReview}
                 ensureReview={ensureReview}
                 onRefresh={onRefresh}
+                onSelectIssue={onSelectIssue}
                 onReflectionChange={setReflection}
               />
             )}

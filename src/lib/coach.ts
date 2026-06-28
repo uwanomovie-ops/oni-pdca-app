@@ -178,7 +178,12 @@ JSONのみ:
 { "reflection": "振り返り本文" }`
 }
 
-function normalizeProposal(raw: Record<string, unknown>, index: number): AdjustProposal | null {
+function normalizeProposal(
+  raw: Record<string, unknown>,
+  index: number,
+  issues: Issue[],
+  tasks: Task[]
+): AdjustProposal | null {
   const type = raw.type as AdjustProposalType
   if (!VALID_TYPES.includes(type)) return null
 
@@ -190,7 +195,14 @@ function normalizeProposal(raw: Record<string, unknown>, index: number): AdjustP
 
   if (type === 'add_kdi') {
     const title = String(raw.title ?? '').trim()
-    const issueId = String(raw.issue_id ?? '').trim()
+    let issueId = String(raw.issue_id ?? '').trim()
+    if (!issueId || !issues.some(i => i.id === issueId)) {
+      const issueTitle = String(raw.issue_title ?? raw.issue ?? '').trim()
+      const matched = issues.find(i =>
+        i.title === issueTitle || i.title.includes(issueTitle) || issueTitle.includes(i.title)
+      )
+      if (matched) issueId = matched.id
+    }
     if (!title || !issueId) return null
     proposal.issue_id = issueId
     proposal.title = title
@@ -198,7 +210,14 @@ function normalizeProposal(raw: Record<string, unknown>, index: number): AdjustP
     const status = raw.status as Status
     if (status && VALID_STATUSES.includes(status)) proposal.status = status
   } else {
-    const kdiId = String(raw.kdi_id ?? '').trim()
+    let kdiId = String(raw.kdi_id ?? '').trim()
+    if (!kdiId || !tasks.some(t => t.id === kdiId)) {
+      const kdiTitle = String(raw.kdi_title ?? raw.task_title ?? '').trim()
+      const matched = tasks.find(t =>
+        t.title === kdiTitle || t.title.includes(kdiTitle) || kdiTitle.includes(t.title)
+      )
+      if (matched) kdiId = matched.id
+    }
     if (!kdiId) return null
     proposal.kdi_id = kdiId
     if (type === 'update_title') {
@@ -220,16 +239,45 @@ function normalizeProposal(raw: Record<string, unknown>, index: number): AdjustP
   return proposal
 }
 
-export function parseCoachJson(raw: string): CoachResponse {
+function extractJsonObject(raw: string): string {
   let jsonStr = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim()
   const match = jsonStr.match(/\{[\s\S]*\}/)
   if (match) jsonStr = match[0]
-  const parsed = JSON.parse(jsonStr) as { feedback?: string; proposals?: unknown[] }
-  const feedback = String(parsed.feedback ?? '').trim()
+  return jsonStr
+}
+
+function parseJsonLoose(raw: string): Record<string, unknown> {
+  const jsonStr = extractJsonObject(raw)
+  try {
+    return JSON.parse(jsonStr) as Record<string, unknown>
+  } catch {
+    // 途中で切れた JSON から feedback だけ救済
+    const fbMatch = jsonStr.match(/"feedback"\s*:\s*"((?:[^"\\]|\\.)*)"/)
+    if (fbMatch) {
+      return {
+        feedback: fbMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"'),
+        proposals: [],
+      }
+    }
+    throw new Error('invalid json')
+  }
+}
+
+function readFeedback(parsed: Record<string, unknown>): string {
+  return String(
+    parsed.feedback ?? parsed.comment ?? parsed.coaching ?? parsed.message ?? ''
+  ).trim()
+}
+
+export function parseCoachJson(raw: string, issues: Issue[] = [], tasks: Task[] = []): CoachResponse {
+  if (!raw.trim()) throw new Error('empty response')
+  const parsed = parseJsonLoose(raw)
+  const feedback = readFeedback(parsed)
   if (!feedback) throw new Error('empty feedback')
 
-  const proposals = (parsed.proposals ?? [])
-    .map((p, i) => normalizeProposal(p as Record<string, unknown>, i))
+  const proposalList = parsed.proposals ?? parsed.adjust_proposals ?? parsed.adjusts ?? []
+  const proposals = (Array.isArray(proposalList) ? proposalList : [])
+    .map((p, i) => normalizeProposal(p as Record<string, unknown>, i, issues, tasks))
     .filter((p): p is AdjustProposal => p !== null)
 
   return { feedback, proposals }

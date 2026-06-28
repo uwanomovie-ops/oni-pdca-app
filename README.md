@@ -46,7 +46,7 @@ Adjust   … 来週に向けた KDI の調整（手動 or AIコーチ提案 → 
 | インライン編集 | KGI・KPI・KDI のタイトルをダブルクリックで修正 | ✅ |
 | 期限編集 | KDI ごとにカレンダーで期限日を設定・変更 | ✅ |
 | AI分解 | 選択中の KGI から Gemini が KPI / KDI を提案 → 採用で DB 保存 | ✅ |
-| 週次 Check | 月曜始まりの週単位で振り返りを記録 | ✅ |
+| 週次 Check | 日曜始まりの週単位（日〜土）。日曜に振り返り → 当日は先週分をデフォルト表示 | ✅ |
 | 手動 Adjust | 振り返りから次週の Adjust アイテムを追加・完了管理 | ✅ |
 | AI週次コーチ | 達成率・履歴をもとにコーチ所見 + KDI 調整案を提案 → 採用 | ✅ |
 | 共有 URL | `/share/[token]` で読み取り専用ビュー | ✅ |
@@ -168,7 +168,7 @@ cp .env.example .env.local
 
 1. [Neon](https://neon.tech) でプロジェクトを作成
 2. SQL Editor で `db/schema.sql` を実行
-3. 既存 DB を使っている場合は `db/migrations/002_coach_columns.sql` も実行（AI週次コーチ用）
+3. 既存 DB を使っている場合は `db/migrations/002_coach_columns.sql` と `003_ai_coach_kdi_mark.sql` も実行
 
 ### 4. 起動
 
@@ -181,8 +181,10 @@ http://localhost:3000 を開きます。
 ### 5. デモデータ（任意）
 
 ```bash
-npm run seed:demo      # 既存ワークスペースにタスク・レビューを追加
-npm run seed:preview   # /preview と同じ内容に差し替え
+npm run seed:demo        # 既存ワークスペースにタスク・レビューを追加
+npm run seed:preview     # /preview と同じ内容に差し替え
+npm run seed:check-demo  # Check/Adjust デモ（振り返り + AIコーチ提案）
+npm run seed:coach-reset # AIコーチ採用ログリセット + 提案再生成
 ```
 
 ### その他のコマンド

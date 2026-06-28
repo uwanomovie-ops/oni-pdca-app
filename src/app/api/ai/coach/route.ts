@@ -18,7 +18,7 @@ async function callGemini(apiKey: string, prompt: string): Promise<string> {
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
           temperature: 0.7,
-          maxOutputTokens: 4096,
+          maxOutputTokens: 8192,
           responseMimeType: 'application/json',
         },
       }),
@@ -31,7 +31,13 @@ async function callGemini(apiKey: string, prompt: string): Promise<string> {
   }
 
   const data = await response.json()
-  return data.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
+  const candidate = data.candidates?.[0]
+  const raw = candidate?.content?.parts?.[0]?.text ?? ''
+  if (!raw.trim()) {
+    const reason = candidate?.finishReason ?? 'unknown'
+    throw new Error(`Gemini API: 空の応答 (finishReason=${reason})`)
+  }
+  return raw
 }
 
 export async function POST(req: Request) {
@@ -96,7 +102,7 @@ export async function POST(req: Request) {
       tone ?? 'standard'
     )
     const raw = await callGemini(apiKey, prompt)
-    const parsed = parseCoachJson(raw)
+    const parsed = parseCoachJson(raw, goalIssues, goalTasks)
     const proposals = validateProposals(parsed.proposals, goalIssues, goalTasks, goal.id)
 
     return NextResponse.json({

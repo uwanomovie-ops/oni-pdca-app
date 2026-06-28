@@ -49,6 +49,7 @@ create table if not exists tasks (
   achievement_rate int not null default 0 check (achievement_rate >= 0 and achievement_rate <= 100),
   due_date         date,
   sort_order       int not null default 0,
+  ai_coach_added   boolean not null default false,
   created_at       timestamptz not null default now()
 );
 

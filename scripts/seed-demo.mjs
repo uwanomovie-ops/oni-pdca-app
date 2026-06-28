@@ -26,11 +26,14 @@ function loadEnv() {
 }
 
 function getWeekStart(date = new Date()) {
-  const d = new Date(date)
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate())
   const day = d.getDay()
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1)
-  d.setDate(diff)
-  return d.toISOString().split('T')[0]
+  d.setDate(d.getDate() - day)
+  if (day === 0) d.setDate(d.getDate() - 7)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${dd}`
 }
 
 loadEnv()

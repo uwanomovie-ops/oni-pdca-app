@@ -7,6 +7,7 @@ import { nextStatus, getDueHealth, dueHealthCardClass, cn } from '@/lib/utils'
 import AchievementBar from './AchievementBar'
 import StatusBadge from './StatusBadge'
 import DueHealthBadge from './DueHealthBadge'
+import AICoachKdiBadge from './AICoachKdiBadge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Slider } from '@/components/ui/slider'
@@ -183,6 +184,7 @@ export default function KDIPane({ tasks, selectedIssue, onRefresh, readOnly }: P
                       status={task.status as Status}
                       onClick={readOnly ? undefined : () => handleStatusToggle(task)}
                     />
+                    {task.ai_coach_added === true && <AICoachKdiBadge />}
                     <DueHealthBadge health={dueHealth} />
                     {readOnly ? (
                       task.due_date && (

@@ -17,19 +17,42 @@ export function computeGoalRate(issues: Issue[], tasks: Task[]): number {
   return Math.round(rates.reduce((sum, r) => sum + r, 0) / rates.length)
 }
 
-export function getWeekStart(date: Date = new Date()): string {
-  const d = new Date(date)
-  const day = d.getDay()
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1)
-  d.setDate(diff)
-  return d.toISOString().split('T')[0]
+function formatDateOnly(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
 }
 
+function parseDateOnly(dateStr: string): Date {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
+
+/** 週の開始日（日曜）。日曜に振り返りする想定で、日曜当日は「先週の日〜土」を表示 */
+export function getWeekStart(date: Date = new Date()): string {
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  const day = d.getDay()
+  d.setDate(d.getDate() - day)
+  if (day === 0) {
+    d.setDate(d.getDate() - 7)
+  }
+  return formatDateOnly(d)
+}
+
+/** 週ラベル（日曜〜土曜） */
 export function formatWeekLabel(weekStart: string): string {
-  const d = new Date(weekStart + 'T00:00:00')
-  const end = new Date(d)
-  end.setDate(d.getDate() + 6)
-  return `${d.getMonth() + 1}/${d.getDate()} 〜 ${end.getMonth() + 1}/${end.getDate()}週`
+  const start = parseDateOnly(weekStart)
+  const end = new Date(start)
+  end.setDate(start.getDate() + 6)
+  return `${start.getMonth() + 1}/${start.getDate()} 〜 ${end.getMonth() + 1}/${end.getDate()}週`
+}
+
+/** 週ナビ用に ±7 日 */
+export function shiftWeekStart(weekStart: string, deltaWeeks: number): string {
+  const d = parseDateOnly(weekStart)
+  d.setDate(d.getDate() + deltaWeeks * 7)
+  return formatDateOnly(d)
 }
 
 export function statusLabel(status: Status): string {
@@ -52,10 +75,6 @@ export function rateColor(rate: number): string {
 }
 
 export type DueHealth = 'emergency' | 'caution' | 'good' | 'normal'
-
-function parseDateOnly(dateStr: string): Date {
-  return new Date(dateStr + 'T00:00:00')
-}
 
 function daysUntilDue(dueDate: string, now: Date): number {
   const due = parseDateOnly(dueDate)
