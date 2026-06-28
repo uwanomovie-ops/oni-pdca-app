@@ -8,6 +8,7 @@ import AchievementBar from './AchievementBar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Plus, Target, Layers, Calendar, Trash2, ChevronDown } from 'lucide-react'
+import AIBreakdownPanel from './AIBreakdownPanel'
 
 interface Props {
   goals: Goal[]
@@ -198,6 +199,9 @@ export default function KGIPane({
               {/* 課題 list (shown when KGI is selected) */}
               {isSelected && (
                 <div className="ml-3 mt-1 space-y-1">
+                  {!readOnly && (
+                    <AIBreakdownPanel goal={goal} issues={issues} onRefresh={onRefresh} />
+                  )}
                   <div className="flex items-center gap-1 px-2 py-1">
                     <Layers className="w-3 h-3 text-indigo-400" />
                     <span className="text-[10px] font-bold tracking-widest uppercase text-indigo-400">課題</span>

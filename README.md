@@ -8,6 +8,7 @@
 - **達成率の自動集計** — KDI の達成率が KPI / KGI に自動反映
 - **KDI ステータス** — TODO / DO / DONE の3段階
 - **インライン編集** — タイトルをダブルクリックで修正
+- **AI分解** — 選択中のKGIから、Gemini が課題（KPI）とKDIの草案を提案・採用
 - **共有 URL** — 読み取り専用ビュー（ログイン不要）
 - **プレビューモード** — `/preview` で DB なしのデモ表示
 
@@ -41,6 +42,7 @@ cp .env.example .env.local
 | 変数 | 説明 |
 |------|------|
 | `DATABASE_URL` | Neon の接続文字列 |
+| `GEMINI_API_KEY` | AI分解機能（[Google AI Studio](https://aistudio.google.com/apikey)） |
 
 `/login`（Google ログイン）を使う場合は `NEXTAUTH_*` と `GOOGLE_*` も設定してください。
 

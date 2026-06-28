@@ -50,3 +50,56 @@ export function rateColor(rate: number): string {
   if (rate >= 20) return 'bg-amber-500'
   return 'bg-slate-300'
 }
+
+export type DueHealth = 'emergency' | 'caution' | 'good' | 'normal'
+
+function parseDateOnly(dateStr: string): Date {
+  return new Date(dateStr + 'T00:00:00')
+}
+
+function daysUntilDue(dueDate: string, now: Date): number {
+  const due = parseDateOnly(dueDate)
+  const today = new Date(now)
+  today.setHours(0, 0, 0, 0)
+  return Math.round((due.getTime() - today.getTime()) / (24 * 60 * 60 * 1000))
+}
+
+/** 納期×達成率によるヘルス（DONE・期限未設定は normal） */
+export function getDueHealth(task: Task, now: Date = new Date()): DueHealth {
+  if (task.status === 'done' || !task.due_date) return 'normal'
+
+  const days = daysUntilDue(task.due_date, now)
+
+  if (days < 0) return 'emergency'
+  if (days <= 3 && task.achievement_rate < 70) return 'caution'
+  if (days >= 7 && task.achievement_rate >= 50) return 'good'
+  return 'normal'
+}
+
+const DUE_HEALTH_RANK: Record<DueHealth, number> = {
+  emergency: 0,
+  caution: 1,
+  good: 2,
+  normal: 3,
+}
+
+/** 配下タスクのうち最も悪い納期ヘルスを返す */
+export function getWorstDueHealth(tasks: Task[], now: Date = new Date()): DueHealth {
+  let worst: DueHealth = 'normal'
+  for (const task of tasks) {
+    const health = getDueHealth(task, now)
+    if (DUE_HEALTH_RANK[health] < DUE_HEALTH_RANK[worst]) worst = health
+  }
+  return worst
+}
+
+export function dueHealthLabel(health: DueHealth): string {
+  return { emergency: '緊急', caution: '注意', good: 'Good', normal: '' }[health]
+}
+
+export function dueHealthCardClass(health: DueHealth): string {
+  if (health === 'emergency') return 'border-l-[9px] border-l-red-500'
+  if (health === 'caution') return 'border-l-[9px] border-l-amber-400'
+  if (health === 'good') return 'border-l-[9px] border-l-emerald-400'
+  return ''
+}

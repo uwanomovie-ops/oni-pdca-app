@@ -3,8 +3,9 @@
 import { useState, useRef } from 'react'
 import { api } from '@/lib/api'
 import type { Goal, Issue, Task } from '@/lib/types'
-import { computeIssueRate } from '@/lib/utils'
+import { computeIssueRate, getWorstDueHealth, dueHealthCardClass, cn } from '@/lib/utils'
 import AchievementBar from './AchievementBar'
+import DueHealthBadge from './DueHealthBadge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Plus, Layers, Trash2 } from 'lucide-react'
@@ -109,15 +110,18 @@ export default function KPIPane({
           const issueTasks = tasks.filter(t => t.issue_id === issue.id)
           const rate = computeIssueRate(issueTasks)
           const isSelected = issue.id === selectedIssueId
+          const worstHealth = getWorstDueHealth(issueTasks)
           return (
             <div
               key={issue.id}
               onClick={() => onSelect(issue.id)}
-              className={`group p-3 rounded-xl cursor-pointer border transition-all ${
+              className={cn(
+                'group p-3 rounded-xl cursor-pointer border transition-all',
                 isSelected
                   ? 'bg-blue-600 border-blue-600 shadow-sm'
-                  : 'bg-background border-border hover:border-blue-300 hover:shadow-sm'
-              }`}
+                  : 'bg-background border-border hover:border-blue-300 hover:shadow-sm',
+                dueHealthCardClass(worstHealth)
+              )}
             >
               <div className="flex items-start justify-between gap-1 mb-2">
                 {editingId === issue.id ? (
@@ -156,6 +160,11 @@ export default function KPIPane({
                   </Button>
                 )}
               </div>
+              {worstHealth !== 'normal' && (
+                <div className="mb-2">
+                  <DueHealthBadge health={worstHealth} />
+                </div>
+              )}
               <AchievementBar rate={rate} size="sm" showLabel={true} />
               <p className={`text-xs mt-1 ${isSelected ? 'text-blue-200' : 'text-muted-foreground'}`}>
                 {issueTasks.length} タスク

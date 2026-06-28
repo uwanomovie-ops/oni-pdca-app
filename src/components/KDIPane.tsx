@@ -3,9 +3,10 @@
 import { useState, useRef } from 'react'
 import { api } from '@/lib/api'
 import type { Issue, Task, Status } from '@/lib/types'
-import { nextStatus } from '@/lib/utils'
+import { nextStatus, getDueHealth, dueHealthCardClass, cn } from '@/lib/utils'
 import AchievementBar from './AchievementBar'
 import StatusBadge from './StatusBadge'
+import DueHealthBadge from './DueHealthBadge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Slider } from '@/components/ui/slider'
@@ -79,6 +80,11 @@ export default function KDIPane({ tasks, selectedIssue, onRefresh, readOnly }: P
     await onRefresh()
   }
 
+  const handleDueDateChange = async (taskId: string, value: string) => {
+    await api.patch(`/api/tasks/${taskId}`, { due_date: value || null })
+    await onRefresh()
+  }
+
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
     if (!confirm('このタスクを削除しますか？')) return
@@ -126,10 +132,14 @@ export default function KDIPane({ tasks, selectedIssue, onRefresh, readOnly }: P
 
         {tasks.map(task => {
           const isExpanded = expandedId === task.id
+          const dueHealth = getDueHealth(task)
           return (
             <div
               key={task.id}
-              className="group p-3 rounded-xl border border-border bg-background hover:border-emerald-200 hover:shadow-sm transition-all"
+              className={cn(
+                'group p-3 rounded-xl border border-border bg-background hover:border-emerald-200 hover:shadow-sm transition-all',
+                dueHealthCardClass(dueHealth)
+              )}
             >
               <div className="flex items-start gap-2">
                 <div className="flex-1 min-w-0">
@@ -168,16 +178,30 @@ export default function KDIPane({ tasks, selectedIssue, onRefresh, readOnly }: P
                       </Button>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 mt-1.5">
+                  <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                     <StatusBadge
                       status={task.status as Status}
                       onClick={readOnly ? undefined : () => handleStatusToggle(task)}
                     />
-                    {task.due_date && (
-                      <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
-                        <Calendar className="w-3 h-3" />
-                        {task.due_date}
-                      </span>
+                    <DueHealthBadge health={dueHealth} />
+                    {readOnly ? (
+                      task.due_date && (
+                        <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
+                          <Calendar className="w-3 h-3" />
+                          {task.due_date}
+                        </span>
+                      )
+                    ) : (
+                      <div className="flex items-center gap-1 min-w-0">
+                        <Calendar className="w-3 h-3 text-muted-foreground shrink-0" />
+                        <Input
+                          type="date"
+                          value={task.due_date ?? ''}
+                          onChange={e => handleDueDateChange(task.id, e.target.value)}
+                          className="h-7 w-[8.5rem] text-xs bg-background text-muted-foreground px-1.5"
+                          aria-label="期限日"
+                        />
+                      </div>
                     )}
                   </div>
                   <div className="mt-2">
