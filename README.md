@@ -10,6 +10,8 @@
 |------|-----|
 | **本番アプリ** | https://oni-pdca-app.vercel.app |
 | **プレビュー（DB不要）** | https://oni-pdca-app.vercel.app/preview |
+| **発表用図解（4ヶ月目）** | https://oni-pdca-ads.surge.sh |
+| **連携図解（2×4ヶ月目・おまけ）** | https://oni-pdca-time-system.surge.sh |
 | **GitHub** | https://github.com/uwanomovie-ops/oni-pdca-app |
 
 ---

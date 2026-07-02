@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { callGemini } from '@/lib/gemini'
 
 export interface AIBreakdownIssue {
   title: string
@@ -98,35 +99,16 @@ export async function POST(req: Request) {
     feedback?.trim()
   )
 
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 2048,
-          responseMimeType: 'application/json',
-        },
-      }),
-    }
-  )
-
-  if (!response.ok) {
-    const err = await response.text()
-    return NextResponse.json({ error: `Gemini APIエラー: ${err}` }, { status: 500 })
-  }
-
-  const data = await response.json()
-  const raw = data.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
-
   try {
+    const { text: raw } = await callGemini(apiKey, prompt, 4096)
     const result = parseGeminiJson(raw)
     return NextResponse.json(result)
-  } catch {
-    console.error('AI breakdown parse failed:', raw)
+  } catch (e) {
+    const message = e instanceof Error ? e.message : '生成に失敗しました'
+    if (message.includes('Gemini')) {
+      return NextResponse.json({ error: message }, { status: 500 })
+    }
+    console.error('AI breakdown parse failed:', e)
     return NextResponse.json(
       { error: 'AIの出力をパースできませんでした。もう一度お試しください。' },
       { status: 500 }
