@@ -59,6 +59,16 @@ export function statusLabel(status: Status): string {
   return { todo: 'TODO', in_progress: 'DO', done: 'DONE' }[status]
 }
 
+export const STATUS_OPTIONS: { value: Status; label: string }[] = [
+  { value: 'todo', label: 'TODO（未着手）' },
+  { value: 'in_progress', label: 'DO（進行中）' },
+  { value: 'done', label: 'DONE（完了）' },
+]
+
+export function statusFullLabel(status: Status): string {
+  return STATUS_OPTIONS.find(o => o.value === status)?.label ?? status
+}
+
 export function statusVariant(status: Status): 'secondary' | 'default' | 'outline' {
   return { todo: 'secondary', in_progress: 'default', done: 'outline' }[status] as 'secondary' | 'default' | 'outline'
 }

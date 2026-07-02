@@ -3,9 +3,9 @@
 import { useState, useRef } from 'react'
 import { api } from '@/lib/api'
 import type { Issue, Task, Status } from '@/lib/types'
-import { nextStatus, getDueHealth, dueHealthCardClass, cn } from '@/lib/utils'
+import { getDueHealth, dueHealthCardClass, cn } from '@/lib/utils'
 import AchievementBar from './AchievementBar'
-import StatusBadge from './StatusBadge'
+import StatusSelect from './StatusSelect'
 import DueHealthBadge from './DueHealthBadge'
 import AICoachKdiBadge from './AICoachKdiBadge'
 import { Button } from '@/components/ui/button'
@@ -64,8 +64,8 @@ export default function KDIPane({ tasks, selectedIssue, onRefresh, readOnly }: P
     await onRefresh()
   }
 
-  const handleStatusToggle = async (task: Task) => {
-    const newStatus = nextStatus(task.status)
+  const handleStatusChange = async (task: Task, newStatus: Status) => {
+    if (newStatus === task.status) return
     const update: Partial<Task> = { status: newStatus }
     if (newStatus === 'done') update.achievement_rate = 100
     if (newStatus === 'todo') update.achievement_rate = 0
@@ -176,9 +176,10 @@ export default function KDIPane({ tasks, selectedIssue, onRefresh, readOnly }: P
                     )}
                   </div>
                   <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                    <StatusBadge
+                    <StatusSelect
                       status={task.status as Status}
-                      onClick={readOnly ? undefined : () => handleStatusToggle(task)}
+                      readOnly={readOnly}
+                      onChange={readOnly ? undefined : (s) => handleStatusChange(task, s)}
                     />
                     {task.ai_coach_added === true && <AICoachKdiBadge />}
                     <DueHealthBadge health={dueHealth} />
