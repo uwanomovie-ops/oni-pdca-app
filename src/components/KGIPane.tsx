@@ -7,8 +7,9 @@ import { computeGoalRate, computeIssueRate } from '@/lib/utils'
 import AchievementBar from './AchievementBar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Plus, Target, Layers, Calendar, Trash2, ChevronDown } from 'lucide-react'
+import { Plus, Target, Layers, Calendar, ChevronDown } from 'lucide-react'
 import AIBreakdownPanel from './AIBreakdownPanel'
+import ItemActionButtons from './ItemActionButtons'
 
 interface Props {
   goals: Goal[]
@@ -117,7 +118,7 @@ export default function KGIPane({
   }
 
   return (
-    <div className="flex flex-col w-1/4 min-w-0 border-r border-border bg-background">
+    <div className="flex flex-col h-full w-full min-w-0 bg-background">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-indigo-50 shrink-0">
         <div className="flex items-center gap-2">
@@ -172,20 +173,18 @@ export default function KGIPane({
                         autoFocus
                       />
                     ) : (
-                      <p
-                        className={`text-sm font-semibold leading-snug mt-0.5 ${isSelected ? 'text-white' : 'text-foreground'}`}
-                        onDoubleClick={(e) => startEditGoal(goal, e)}
-                        title={readOnly ? '' : 'ダブルクリックで編集'}
-                      >
+                      <p className={`text-sm font-semibold leading-snug mt-0.5 ${isSelected ? 'text-white' : 'text-foreground'}`}>
                         {goal.title}
                       </p>
                     )}
                   </div>
                   {!readOnly && (
-                    <Button variant="ghost" size="icon-xs" onClick={(e) => handleDeleteGoal(goal.id, e)}
-                      className={`opacity-0 group-hover:opacity-100 shrink-0 transition-opacity ${isSelected ? 'hover:bg-indigo-500 text-indigo-200' : 'hover:bg-red-50 text-red-400'}`}>
-                      <Trash2 />
-                    </Button>
+                    <ItemActionButtons
+                      tone="indigo"
+                      selected={isSelected}
+                      onEdit={(e) => startEditGoal(goal, e)}
+                      onDelete={(e) => handleDeleteGoal(goal.id, e)}
+                    />
                   )}
                 </div>
                 <AchievementBar rate={rate} size="sm" showLabel />
@@ -251,11 +250,7 @@ export default function KGIPane({
                               autoFocus
                             />
                           ) : (
-                            <p
-                              className="text-xs font-medium leading-snug truncate"
-                              onDoubleClick={(e) => startEditIssue(issue, e)}
-                              title={readOnly ? '' : 'ダブルクリックで編集'}
-                            >
+                            <p className="text-xs font-medium leading-snug truncate">
                               {issue.title}
                             </p>
                           )}
@@ -267,10 +262,12 @@ export default function KGIPane({
                           </div>
                         </div>
                         {!readOnly && (
-                          <Button variant="ghost" size="icon-xs" onClick={(e) => handleDeleteIssue(issue.id, e)}
-                            className="opacity-0 group-hover:opacity-100 shrink-0 transition-opacity hover:bg-red-50 text-red-400 h-5 w-5">
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
+                          <ItemActionButtons
+                            tone="indigo"
+                            compact
+                            onEdit={(e) => startEditIssue(issue, e)}
+                            onDelete={(e) => handleDeleteIssue(issue.id, e)}
+                          />
                         )}
                       </div>
                     )

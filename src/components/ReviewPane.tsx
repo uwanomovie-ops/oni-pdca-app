@@ -105,7 +105,7 @@ export default function ReviewPane({
   }
 
   return (
-    <div className="flex flex-col w-1/4 min-w-0 bg-background">
+    <div className="flex flex-col h-full w-full min-w-0 bg-background">
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-amber-50 shrink-0">
         <div className="flex items-center gap-2">
           <ClipboardList className="w-4 h-4 text-amber-600" />

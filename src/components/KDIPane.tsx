@@ -11,7 +11,8 @@ import AICoachKdiBadge from './AICoachKdiBadge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Slider } from '@/components/ui/slider'
-import { Plus, CheckSquare, Calendar, Trash2 } from 'lucide-react'
+import { Plus, CheckSquare, Calendar } from 'lucide-react'
+import ItemActionButtons from './ItemActionButtons'
 
 interface Props {
   tasks: Task[]
@@ -94,7 +95,7 @@ export default function KDIPane({ tasks, selectedIssue, onRefresh, readOnly }: P
   }
 
   return (
-    <div className="flex flex-col w-1/4 min-w-0 border-r border-border bg-background">
+    <div className="flex flex-col h-full w-full min-w-0 bg-background">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-emerald-50 shrink-0">
         <div className="flex items-center gap-2">
@@ -162,21 +163,16 @@ export default function KDIPane({ tasks, selectedIssue, onRefresh, readOnly }: P
                       <p
                         className="text-sm font-medium text-foreground leading-snug cursor-pointer"
                         onClick={() => !readOnly && setExpandedId(isExpanded ? null : task.id)}
-                        onDoubleClick={(e) => startEdit(task, e)}
-                        title={readOnly ? '' : 'ダブルクリックで編集'}
                       >
                         {task.title}
                       </p>
                     )}
                     {!readOnly && (
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={(e) => handleDelete(task.id, e)}
-                        className="opacity-0 group-hover:opacity-100 shrink-0 transition-opacity hover:bg-red-50 text-red-400"
-                      >
-                        <Trash2 />
-                      </Button>
+                      <ItemActionButtons
+                        tone="emerald"
+                        onEdit={(e) => startEdit(task, e)}
+                        onDelete={(e) => handleDelete(task.id, e)}
+                      />
                     )}
                   </div>
                   <div className="flex items-center gap-2 mt-1.5 flex-wrap">

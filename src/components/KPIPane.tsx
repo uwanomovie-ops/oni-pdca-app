@@ -8,7 +8,8 @@ import AchievementBar from './AchievementBar'
 import DueHealthBadge from './DueHealthBadge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Plus, Layers, Trash2 } from 'lucide-react'
+import { Plus, Layers } from 'lucide-react'
+import ItemActionButtons from './ItemActionButtons'
 
 interface Props {
   issues: Issue[]
@@ -69,7 +70,7 @@ export default function KPIPane({
   }
 
   return (
-    <div className="flex flex-col w-1/4 min-w-0 border-r border-border bg-background">
+    <div className="flex flex-col h-full w-full min-w-0 bg-background">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-blue-50 shrink-0">
         <div className="flex items-center gap-2">
@@ -135,29 +136,26 @@ export default function KPIPane({
                       if (e.key === 'Escape') setEditingId(null)
                     }}
                     onClick={e => e.stopPropagation()}
-                    className="flex-1 text-sm font-medium bg-white/20 border border-white/40 rounded px-1.5 py-0.5 text-white outline-none"
+                    className={cn(
+                      'flex-1 text-sm font-medium rounded px-1.5 py-0.5 outline-none',
+                      isSelected
+                        ? 'bg-white/20 border border-white/40 text-white'
+                        : 'bg-white border border-blue-300 text-foreground',
+                    )}
                     autoFocus
                   />
                 ) : (
-                  <p
-                    className={`text-sm font-medium leading-snug ${isSelected ? 'text-white' : 'text-foreground'}`}
-                    onDoubleClick={(e) => startEdit(issue, e)}
-                    title={readOnly ? '' : 'ダブルクリックで編集'}
-                  >
+                  <p className={`text-sm font-medium leading-snug ${isSelected ? 'text-white' : 'text-foreground'}`}>
                     {issue.title}
                   </p>
                 )}
                 {!readOnly && (
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    onClick={(e) => handleDelete(issue.id, e)}
-                    className={`opacity-0 group-hover:opacity-100 shrink-0 transition-opacity ${
-                      isSelected ? 'hover:bg-blue-500 text-blue-100' : 'hover:bg-red-50 text-red-400'
-                    }`}
-                  >
-                    <Trash2 />
-                  </Button>
+                  <ItemActionButtons
+                    tone="blue"
+                    selected={isSelected}
+                    onEdit={(e) => startEdit(issue, e)}
+                    onDelete={(e) => handleDelete(issue.id, e)}
+                  />
                 )}
               </div>
               {worstHealth !== 'normal' && (
