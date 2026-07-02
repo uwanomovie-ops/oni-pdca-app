@@ -1,14 +1,16 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useCallback, useMemo, useState, useRef } from 'react'
 import { api } from '@/lib/api'
 import type { Goal, Issue, Task } from '@/lib/types'
 import { computeIssueRate, getWorstDueHealth, dueHealthCardClass, cn } from '@/lib/utils'
+import { useDragReorder } from '@/hooks/useDragReorder'
+import { persistIssueOrder } from '@/lib/persist-order'
 import AchievementBar from './AchievementBar'
 import DueHealthBadge from './DueHealthBadge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Plus, Layers } from 'lucide-react'
+import { Plus, Layers, GripVertical } from 'lucide-react'
 import ItemActionButtons from './ItemActionButtons'
 
 interface Props {
@@ -69,6 +71,24 @@ export default function KPIPane({
     await onRefresh()
   }
 
+  const sortedIssues = useMemo(
+    () => [...issues].sort((a, b) => a.sort_order - b.sort_order),
+    [issues],
+  )
+
+  const persistOrder = useCallback(async (ordered: Issue[]) => {
+    await persistIssueOrder(ordered)
+    await onRefresh()
+  }, [onRefresh])
+
+  const {
+    orderedItems: orderedIssues,
+    dragIndex,
+    overIndex,
+    getItemDragProps,
+    getHandleProps,
+  } = useDragReorder(sortedIssues, persistOrder, readOnly)
+
   return (
     <div className="flex flex-col h-full w-full min-w-0 bg-background">
       {/* Header */}
@@ -107,24 +127,45 @@ export default function KPIPane({
           </p>
         )}
 
-        {issues.map(issue => {
+        {orderedIssues.map((issue, index) => {
           const issueTasks = tasks.filter(t => t.issue_id === issue.id)
           const rate = computeIssueRate(issueTasks)
           const isSelected = issue.id === selectedIssueId
           const worstHealth = getWorstDueHealth(issueTasks)
+          const isDragging = dragIndex === index
+          const isDropTarget = overIndex === index && dragIndex !== null && dragIndex !== index
           return (
             <div
               key={issue.id}
+              {...getItemDragProps(index)}
               onClick={() => onSelect(issue.id)}
               className={cn(
                 'group p-3 rounded-xl cursor-pointer border transition-all',
                 isSelected
                   ? 'bg-blue-600 border-blue-600 shadow-sm'
                   : 'bg-background border-border hover:border-blue-300 hover:shadow-sm',
-                dueHealthCardClass(worstHealth)
+                dueHealthCardClass(worstHealth),
+                isDragging && 'opacity-40',
+                isDropTarget && 'border-blue-400 ring-2 ring-blue-200',
               )}
             >
-              <div className="flex items-start justify-between gap-1 mb-2">
+              <div className="flex items-start gap-2 mb-2">
+                {!readOnly && (
+                  <div
+                    {...getHandleProps(index)}
+                    aria-label="並び替え"
+                    onClick={(e) => e.stopPropagation()}
+                    className={cn(
+                      'mt-0.5 shrink-0 cursor-grab active:cursor-grabbing touch-none transition-opacity',
+                      isSelected
+                        ? 'text-blue-200 opacity-0 group-hover:opacity-100 hover:text-white'
+                        : 'text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-blue-600',
+                    )}
+                  >
+                    <GripVertical className="w-4 h-4" />
+                  </div>
+                )}
+                <div className="flex items-start justify-between gap-1 flex-1 min-w-0">
                 {editingId === issue.id ? (
                   <input
                     ref={editInputRef}
@@ -157,6 +198,7 @@ export default function KPIPane({
                     onDelete={(e) => handleDelete(issue.id, e)}
                   />
                 )}
+                </div>
               </div>
               {worstHealth !== 'normal' && (
                 <div className="mb-2">

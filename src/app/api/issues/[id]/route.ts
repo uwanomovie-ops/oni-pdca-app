@@ -3,10 +3,13 @@ import sql from '@/lib/db'
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const { title } = await req.json()
+  const body = await req.json()
+  const fields = Object.keys(body)
+  const values = Object.values(body)
+  const setClause = fields.map((f, i) => `${f} = $${i + 1}`).join(', ')
   const rows = await sql.query(
-    'UPDATE issues SET title = $1 WHERE id = $2 RETURNING *',
-    [title, id]
+    `UPDATE issues SET ${setClause} WHERE id = $${fields.length + 1} RETURNING *`,
+    [...values, id]
   )
   return NextResponse.json(rows[0])
 }

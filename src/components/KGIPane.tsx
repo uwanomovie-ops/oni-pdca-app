@@ -1,13 +1,15 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useCallback, useMemo, useState, useRef } from 'react'
 import { api } from '@/lib/api'
 import type { Goal, Issue, Task } from '@/lib/types'
 import { computeGoalRate, computeIssueRate } from '@/lib/utils'
+import { useDragReorder } from '@/hooks/useDragReorder'
+import { persistIssueOrder } from '@/lib/persist-order'
 import AchievementBar from './AchievementBar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Plus, Target, Layers, Calendar, ChevronDown } from 'lucide-react'
+import { Plus, Target, Layers, Calendar, GripVertical } from 'lucide-react'
 import AIBreakdownPanel from './AIBreakdownPanel'
 import ItemActionButtons from './ItemActionButtons'
 
@@ -117,6 +119,26 @@ export default function KGIPane({
     await onRefresh()
   }
 
+  const selectedGoalIssues = useMemo(
+    () => selectedGoalId
+      ? issues.filter(i => i.goal_id === selectedGoalId).sort((a, b) => a.sort_order - b.sort_order)
+      : [],
+    [issues, selectedGoalId],
+  )
+
+  const persistOrder = useCallback(async (ordered: Issue[]) => {
+    await persistIssueOrder(ordered)
+    await onRefresh()
+  }, [onRefresh])
+
+  const {
+    orderedItems: orderedSelectedIssues,
+    dragIndex: issueDragIndex,
+    overIndex: issueOverIndex,
+    getItemDragProps: getIssueDragProps,
+    getHandleProps: getIssueHandleProps,
+  } = useDragReorder(selectedGoalIssues, persistOrder, readOnly)
+
   return (
     <div className="flex flex-col h-full w-full min-w-0 bg-background">
       {/* Header */}
@@ -219,21 +241,33 @@ export default function KGIPane({
                     </p>
                   )}
 
-                  {goalIssues.map(issue => {
+                  {orderedSelectedIssues.map((issue, issueIndex) => {
                     const issueTasks = tasks.filter(t => t.issue_id === issue.id)
                     const issueRate = computeIssueRate(issueTasks)
                     const isIssueSelected = issue.id === selectedIssueId
+                    const isDragging = issueDragIndex === issueIndex
+                    const isDropTarget = issueOverIndex === issueIndex && issueDragIndex !== null && issueDragIndex !== issueIndex
                     return (
                       <div
                         key={issue.id}
+                        {...getIssueDragProps(issueIndex)}
                         onClick={(e) => { e.stopPropagation(); onSelectIssue(issue.id) }}
                         className={`group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer border transition-all ${
                           isIssueSelected
                             ? 'bg-indigo-100 border-indigo-300 text-indigo-800'
                             : 'bg-background border-border hover:border-indigo-200'
-                        }`}
+                        } ${isDragging ? 'opacity-40' : ''} ${isDropTarget ? 'border-indigo-400 ring-2 ring-indigo-200' : ''}`}
                       >
-                        <ChevronDown className={`w-3 h-3 shrink-0 ${isIssueSelected ? 'text-indigo-500' : 'text-muted-foreground'}`} />
+                        {!readOnly ? (
+                          <div
+                            {...getIssueHandleProps(issueIndex)}
+                            aria-label="並び替え"
+                            onClick={(e) => e.stopPropagation()}
+                            className="shrink-0 cursor-grab active:cursor-grabbing text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-indigo-500 transition-opacity touch-none"
+                          >
+                            <GripVertical className="w-3 h-3" />
+                          </div>
+                        ) : null}
                       <div className="flex-1 min-w-0">
                           {editingIssueId === issue.id ? (
                             <input
