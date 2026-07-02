@@ -9,6 +9,7 @@ import AchievementBar from './AchievementBar'
 import StatusSelect from './StatusSelect'
 import DueHealthBadge from './DueHealthBadge'
 import AICoachKdiBadge from './AICoachKdiBadge'
+import AIBreakdownBadge from './AIBreakdownBadge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Slider } from '@/components/ui/slider'
@@ -216,6 +217,7 @@ export default function KDIPane({ tasks, selectedIssue, onRefresh, readOnly }: P
                       onChange={readOnly ? undefined : (s) => handleStatusChange(task, s)}
                     />
                     {task.ai_coach_added === true && <AICoachKdiBadge />}
+                    {task.ai_breakdown_added === true && <AIBreakdownBadge />}
                     <DueHealthBadge health={dueHealth} />
                     {readOnly ? (
                       task.due_date && (

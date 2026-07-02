@@ -3,14 +3,13 @@
 import { useCallback, useMemo, useState, useRef } from 'react'
 import { api } from '@/lib/api'
 import type { Goal, Issue, Task } from '@/lib/types'
-import { computeGoalRate, computeIssueRate } from '@/lib/utils'
+import { computeGoalRate } from '@/lib/utils'
 import { useDragReorder } from '@/hooks/useDragReorder'
-import { persistGoalOrder, persistIssueOrder } from '@/lib/persist-order'
+import { persistGoalOrder } from '@/lib/persist-order'
 import AchievementBar from './AchievementBar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Plus, Target, Layers, Calendar, GripVertical } from 'lucide-react'
-import AIBreakdownPanel from './AIBreakdownPanel'
+import { Plus, Target, Calendar, GripVertical } from 'lucide-react'
 import ItemActionButtons from './ItemActionButtons'
 
 interface Props {
@@ -18,9 +17,7 @@ interface Props {
   issues: Issue[]
   tasks: Task[]
   selectedGoalId: string | null
-  selectedIssueId: string | null
   onSelectGoal: (id: string) => void
-  onSelectIssue: (id: string) => void
   workspaceId: string
   onRefresh: () => Promise<void>
   readOnly: boolean
@@ -28,18 +25,15 @@ interface Props {
 
 export default function KGIPane({
   goals, issues, tasks,
-  selectedGoalId, selectedIssueId,
-  onSelectGoal, onSelectIssue,
+  selectedGoalId,
+  onSelectGoal,
   workspaceId, onRefresh, readOnly,
 }: Props) {
   const [addingGoal, setAddingGoal] = useState(false)
-  const [addingIssueForGoalId, setAddingIssueForGoalId] = useState<string | null>(null)
   const [goalTitle, setGoalTitle] = useState('')
   const [goalDueDate, setGoalDueDate] = useState('')
-  const [issueTitle, setIssueTitle] = useState('')
   const [loading, setLoading] = useState(false)
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null)
-  const [editingIssueId, setEditingIssueId] = useState<string | null>(null)
   const [editingTitle, setEditingTitle] = useState('')
   const editInputRef = useRef<HTMLInputElement>(null)
 
@@ -59,22 +53,6 @@ export default function KGIPane({
     setEditingGoalId(null)
   }
 
-  const startEditIssue = (issue: Issue, e: React.MouseEvent) => {
-    if (readOnly) return
-    e.stopPropagation()
-    setEditingIssueId(issue.id)
-    setEditingTitle(issue.title)
-    setTimeout(() => editInputRef.current?.select(), 0)
-  }
-
-  const saveEditIssue = async (id: string) => {
-    if (editingTitle.trim()) {
-      await api.patch(`/api/issues/${id}`, { title: editingTitle.trim() })
-      await onRefresh()
-    }
-    setEditingIssueId(null)
-  }
-
   const handleAddGoal = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!goalTitle.trim()) return
@@ -90,32 +68,10 @@ export default function KGIPane({
     await onRefresh()
   }
 
-  const handleAddIssue = async (e: React.FormEvent, goalId: string) => {
-    e.preventDefault()
-    if (!issueTitle.trim()) return
-    setLoading(true)
-    const goalIssues = issues.filter(i => i.goal_id === goalId)
-    await api.post('/api/issues', {
-      goal_id: goalId,
-      title: issueTitle.trim(),
-      sort_order: goalIssues.length,
-    })
-    setIssueTitle(''); setAddingIssueForGoalId(null)
-    setLoading(false)
-    await onRefresh()
-  }
-
   const handleDeleteGoal = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    if (!confirm('このKGIを削除しますか？関連するすべての課題・KPI・KDIも削除されます。')) return
+    if (!confirm('このKGIを削除しますか？関連するすべてのKPI・KDIも削除されます。')) return
     await api.delete(`/api/goals/${id}`)
-    await onRefresh()
-  }
-
-  const handleDeleteIssue = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (!confirm('この課題を削除しますか？')) return
-    await api.delete(`/api/issues/${id}`)
     await onRefresh()
   }
 
@@ -137,33 +93,13 @@ export default function KGIPane({
     getHandleProps: getGoalHandleProps,
   } = useDragReorder(sortedGoals, persistGoalOrderAndRefresh, readOnly)
 
-  const selectedGoalIssues = useMemo(
-    () => selectedGoalId
-      ? issues.filter(i => i.goal_id === selectedGoalId).sort((a, b) => a.sort_order - b.sort_order)
-      : [],
-    [issues, selectedGoalId],
-  )
-
-  const persistOrder = useCallback(async (ordered: Issue[]) => {
-    await persistIssueOrder(ordered)
-    await onRefresh()
-  }, [onRefresh])
-
-  const {
-    orderedItems: orderedSelectedIssues,
-    dragIndex: issueDragIndex,
-    overIndex: issueOverIndex,
-    getItemDragProps: getIssueDragProps,
-    getHandleProps: getIssueHandleProps,
-  } = useDragReorder(selectedGoalIssues, persistOrder, readOnly)
-
   return (
     <div className="flex flex-col h-full w-full min-w-0 bg-background">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-indigo-50 shrink-0">
         <div className="flex items-center gap-2">
           <Target className="w-4 h-4 text-indigo-600" />
-          <span className="text-sm font-semibold text-indigo-800">KGI＋課題</span>
+          <span className="text-sm font-semibold text-indigo-800">KGI</span>
         </div>
         {!readOnly && (
           <Button variant="ghost" size="icon-xs" onClick={() => setAddingGoal(true)} className="text-indigo-600 hover:bg-indigo-100">
@@ -192,7 +128,6 @@ export default function KGIPane({
               {...getGoalDragProps(goalIndex)}
               className={isDragging ? 'opacity-40' : isDropTarget ? 'rounded-xl ring-2 ring-indigo-300' : ''}
             >
-              {/* KGI Card */}
               <div
                 onClick={() => onSelectGoal(goal.id)}
                 className={`group p-3 rounded-xl cursor-pointer border transition-all ${
@@ -254,110 +189,6 @@ export default function KGIPane({
                   </div>
                 )}
               </div>
-
-              {/* 課題 list (shown when KGI is selected) */}
-              {isSelected && (
-                <div className="ml-3 mt-1 space-y-1">
-                  {!readOnly && (
-                    <AIBreakdownPanel goal={goal} issues={issues} onRefresh={onRefresh} />
-                  )}
-                  <div className="flex items-center gap-1 px-2 py-1">
-                    <Layers className="w-3 h-3 text-indigo-400" />
-                    <span className="text-[10px] font-bold tracking-widest uppercase text-indigo-400">課題</span>
-                    {!readOnly && (
-                      <Button variant="ghost" size="icon-xs"
-                        onClick={() => { setAddingIssueForGoalId(goal.id); setIssueTitle('') }}
-                        className="ml-auto text-indigo-500 hover:bg-indigo-50 h-5 w-5">
-                        <Plus className="w-3 h-3" />
-                      </Button>
-                    )}
-                  </div>
-
-                  {goalIssues.length === 0 && addingIssueForGoalId !== goal.id && (
-                    <p className="text-xs text-muted-foreground px-2 pb-2">
-                      {readOnly ? '課題がありません' : '「+」から課題を追加'}
-                    </p>
-                  )}
-
-                  {orderedSelectedIssues.map((issue, issueIndex) => {
-                    const issueTasks = tasks.filter(t => t.issue_id === issue.id)
-                    const issueRate = computeIssueRate(issueTasks)
-                    const isIssueSelected = issue.id === selectedIssueId
-                    const isDragging = issueDragIndex === issueIndex
-                    const isDropTarget = issueOverIndex === issueIndex && issueDragIndex !== null && issueDragIndex !== issueIndex
-                    return (
-                      <div
-                        key={issue.id}
-                        {...getIssueDragProps(issueIndex)}
-                        onClick={(e) => { e.stopPropagation(); onSelectIssue(issue.id) }}
-                        className={`group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer border transition-all ${
-                          isIssueSelected
-                            ? 'bg-indigo-100 border-indigo-300 text-indigo-800'
-                            : 'bg-background border-border hover:border-indigo-200'
-                        } ${isDragging ? 'opacity-40' : ''} ${isDropTarget ? 'border-indigo-400 ring-2 ring-indigo-200' : ''}`}
-                      >
-                        {!readOnly ? (
-                          <div
-                            {...getIssueHandleProps(issueIndex)}
-                            aria-label="並び替え"
-                            onClick={(e) => e.stopPropagation()}
-                            className="shrink-0 cursor-grab active:cursor-grabbing text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-indigo-500 transition-opacity touch-none"
-                          >
-                            <GripVertical className="w-3 h-3" />
-                          </div>
-                        ) : null}
-                      <div className="flex-1 min-w-0">
-                          {editingIssueId === issue.id ? (
-                            <input
-                              ref={editInputRef}
-                              value={editingTitle}
-                              onChange={e => setEditingTitle(e.target.value)}
-                              onBlur={() => saveEditIssue(issue.id)}
-                              onKeyDown={e => {
-                                if (e.key === 'Enter') saveEditIssue(issue.id)
-                                if (e.key === 'Escape') setEditingIssueId(null)
-                              }}
-                              onClick={e => e.stopPropagation()}
-                              className="w-full text-xs font-medium bg-white border border-indigo-300 rounded px-1.5 py-0.5 outline-none"
-                              autoFocus
-                            />
-                          ) : (
-                            <p className="text-xs font-medium leading-snug truncate">
-                              {issue.title}
-                            </p>
-                          )}
-                          <div className="flex items-center gap-1 mt-0.5">
-                            <div className="flex-1 h-1 bg-slate-100 rounded-full overflow-hidden">
-                              <div className="h-full bg-indigo-400 rounded-full" style={{ width: `${issueRate}%` }} />
-                            </div>
-                            <span className="text-[10px] text-muted-foreground">{issueRate}%</span>
-                          </div>
-                        </div>
-                        {!readOnly && (
-                          <ItemActionButtons
-                            tone="indigo"
-                            compact
-                            onEdit={(e) => startEditIssue(issue, e)}
-                            onDelete={(e) => handleDeleteIssue(issue.id, e)}
-                          />
-                        )}
-                      </div>
-                    )
-                  })}
-
-                  {addingIssueForGoalId === goal.id && (
-                    <form onSubmit={(e) => handleAddIssue(e, goal.id)}
-                      className="p-2 rounded-lg border border-indigo-200 bg-indigo-50 space-y-1.5 mx-1">
-                      <Input autoFocus value={issueTitle} onChange={e => setIssueTitle(e.target.value)}
-                        placeholder="課題を入力" className="text-xs h-7 bg-white" />
-                      <div className="flex gap-1.5">
-                        <Button type="submit" size="xs" disabled={loading} className="flex-1 bg-indigo-600 hover:bg-indigo-700">追加</Button>
-                        <Button type="button" variant="outline" size="xs" onClick={() => setAddingIssueForGoalId(null)} className="flex-1">キャンセル</Button>
-                      </div>
-                    </form>
-                  )}
-                </div>
-              )}
             </div>
           )
         })}

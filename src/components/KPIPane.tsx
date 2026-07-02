@@ -12,9 +12,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Plus, Layers, GripVertical } from 'lucide-react'
 import ItemActionButtons from './ItemActionButtons'
+import AIBreakdownPanel from './AIBreakdownPanel'
+import AIBreakdownBadge from './AIBreakdownBadge'
 
 interface Props {
   issues: Issue[]
+  allIssues: Issue[]
   tasks: Task[]
   selectedGoal: Goal | null
   selectedIssueId: string | null
@@ -24,7 +27,7 @@ interface Props {
 }
 
 export default function KPIPane({
-  issues, tasks, selectedGoal, selectedIssueId, onSelect, onRefresh, readOnly,
+  issues, allIssues, tasks, selectedGoal, selectedIssueId, onSelect, onRefresh, readOnly,
 }: Props) {
   const [adding, setAdding] = useState(false)
   const [title, setTitle] = useState('')
@@ -121,6 +124,9 @@ export default function KPIPane({
         {!selectedGoal && (
           <p className="text-xs text-muted-foreground text-center py-8">← 目標を選択してください</p>
         )}
+        {selectedGoal && !readOnly && (
+          <AIBreakdownPanel goal={selectedGoal} issues={allIssues} onRefresh={onRefresh} />
+        )}
         {selectedGoal && issues.length === 0 && !adding && (
           <p className="text-xs text-muted-foreground text-center py-8">
             {readOnly ? 'KPIがありません' : '「+」からKPIを追加しましょう'}
@@ -186,9 +192,12 @@ export default function KPIPane({
                     autoFocus
                   />
                 ) : (
-                  <p className={`text-sm font-medium leading-snug ${isSelected ? 'text-white' : 'text-foreground'}`}>
-                    {issue.title}
-                  </p>
+                  <div className="flex items-center gap-1.5 flex-wrap flex-1 min-w-0">
+                    <p className={`text-sm font-medium leading-snug ${isSelected ? 'text-white' : 'text-foreground'}`}>
+                      {issue.title}
+                    </p>
+                    {issue.ai_breakdown_added === true && <AIBreakdownBadge />}
+                  </div>
                 )}
                 {!readOnly && (
                   <ItemActionButtons

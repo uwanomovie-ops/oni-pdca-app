@@ -36,6 +36,7 @@ create table if not exists issues (
   title       text not null,
   description text,
   sort_order  int not null default 0,
+  ai_breakdown_added boolean not null default false,
   created_at  timestamptz not null default now()
 );
 
@@ -50,6 +51,7 @@ create table if not exists tasks (
   due_date         date,
   sort_order       int not null default 0,
   ai_coach_added   boolean not null default false,
+  ai_breakdown_added boolean not null default false,
   created_at       timestamptz not null default now()
 );
 

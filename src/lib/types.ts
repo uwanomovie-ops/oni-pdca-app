@@ -24,6 +24,7 @@ export interface Issue {
   title: string
   description: string | null
   sort_order: number
+  ai_breakdown_added: boolean
   created_at: string
 }
 
@@ -37,6 +38,7 @@ export interface Task {
   due_date: string | null
   sort_order: number
   ai_coach_added: boolean
+  ai_breakdown_added: boolean
   created_at: string
 }
 

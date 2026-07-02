@@ -107,9 +107,7 @@ export default function Board({
           issues={issues}
           tasks={tasks}
           selectedGoalId={selectedGoalId}
-          selectedIssueId={selectedIssueId}
           onSelectGoal={(id) => { setSelectedGoalId(id); setSelectedIssueId(null) }}
-          onSelectIssue={setSelectedIssueId}
           workspaceId={workspace.id}
           onRefresh={loadData}
           readOnly={readOnly}
@@ -119,6 +117,7 @@ export default function Board({
       <div className="min-w-0 shrink-0 h-full" style={{ width: `${paneWidths[1]}%` }}>
         <KPIPane
           issues={visibleIssues}
+          allIssues={issues}
           tasks={tasks}
           selectedGoal={selectedGoal}
           selectedIssueId={selectedIssueId}
