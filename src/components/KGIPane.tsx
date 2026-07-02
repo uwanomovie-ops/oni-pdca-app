@@ -5,7 +5,7 @@ import { api } from '@/lib/api'
 import type { Goal, Issue, Task } from '@/lib/types'
 import { computeGoalRate, computeIssueRate } from '@/lib/utils'
 import { useDragReorder } from '@/hooks/useDragReorder'
-import { persistIssueOrder } from '@/lib/persist-order'
+import { persistGoalOrder, persistIssueOrder } from '@/lib/persist-order'
 import AchievementBar from './AchievementBar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -119,6 +119,24 @@ export default function KGIPane({
     await onRefresh()
   }
 
+  const sortedGoals = useMemo(
+    () => [...goals].sort((a, b) => a.sort_order - b.sort_order),
+    [goals],
+  )
+
+  const persistGoalOrderAndRefresh = useCallback(async (ordered: Goal[]) => {
+    await persistGoalOrder(ordered)
+    await onRefresh()
+  }, [onRefresh])
+
+  const {
+    orderedItems: orderedGoals,
+    dragIndex: goalDragIndex,
+    overIndex: goalOverIndex,
+    getItemDragProps: getGoalDragProps,
+    getHandleProps: getGoalHandleProps,
+  } = useDragReorder(sortedGoals, persistGoalOrderAndRefresh, readOnly)
+
   const selectedGoalIssues = useMemo(
     () => selectedGoalId
       ? issues.filter(i => i.goal_id === selectedGoalId).sort((a, b) => a.sort_order - b.sort_order)
@@ -161,13 +179,19 @@ export default function KGIPane({
           </p>
         )}
 
-        {goals.map(goal => {
+        {orderedGoals.map((goal, goalIndex) => {
           const goalIssues = issues.filter(i => i.goal_id === goal.id)
           const rate = computeGoalRate(goalIssues, tasks)
           const isSelected = goal.id === selectedGoalId
+          const isDragging = goalDragIndex === goalIndex
+          const isDropTarget = goalOverIndex === goalIndex && goalDragIndex !== null && goalDragIndex !== goalIndex
 
           return (
-            <div key={goal.id}>
+            <div
+              key={goal.id}
+              {...getGoalDragProps(goalIndex)}
+              className={isDragging ? 'opacity-40' : isDropTarget ? 'rounded-xl ring-2 ring-indigo-300' : ''}
+            >
               {/* KGI Card */}
               <div
                 onClick={() => onSelectGoal(goal.id)}
@@ -177,7 +201,20 @@ export default function KGIPane({
                     : 'bg-background border-border hover:border-indigo-300 hover:shadow-sm'
                 }`}
               >
-                <div className="flex items-start justify-between gap-1 mb-1.5">
+                <div className="flex items-start gap-2 mb-1.5">
+                  {!readOnly && (
+                    <div
+                      {...getGoalHandleProps(goalIndex)}
+                      aria-label="並び替え"
+                      onClick={(e) => e.stopPropagation()}
+                      className={`mt-0.5 shrink-0 cursor-grab active:cursor-grabbing touch-none transition-opacity opacity-0 group-hover:opacity-100 ${
+                        isSelected ? 'text-indigo-200 hover:text-white' : 'text-muted-foreground hover:text-indigo-600'
+                      }`}
+                    >
+                      <GripVertical className="w-4 h-4" />
+                    </div>
+                  )}
+                  <div className="flex items-start justify-between gap-1 flex-1 min-w-0">
                   <div className="flex-1 min-w-0">
                     <span className={`text-[10px] font-bold tracking-widest uppercase ${isSelected ? 'text-indigo-200' : 'text-indigo-500'}`}>KGI</span>
                     {editingGoalId === goal.id ? (
@@ -208,6 +245,7 @@ export default function KGIPane({
                       onDelete={(e) => handleDeleteGoal(goal.id, e)}
                     />
                   )}
+                  </div>
                 </div>
                 <AchievementBar rate={rate} size="sm" showLabel />
                 {goal.due_date && (
