@@ -90,8 +90,12 @@ export default function Board({
     setActionItems(data.actionItems)
   }, [workspace.id, readOnly])
 
-  const visibleIssues = selectedGoalId ? issues.filter(i => i.goal_id === selectedGoalId) : []
-  const visibleTasks = selectedIssueId ? tasks.filter(t => t.issue_id === selectedIssueId) : []
+  const visibleIssues = selectedGoalId
+    ? issues.filter(i => i.goal_id === selectedGoalId).sort((a, b) => a.sort_order - b.sort_order)
+    : []
+  const visibleTasks = selectedIssueId
+    ? tasks.filter(t => t.issue_id === selectedIssueId).sort((a, b) => a.sort_order - b.sort_order)
+    : []
   const selectedGoal = goals.find(g => g.id === selectedGoalId) ?? null
   const selectedIssue = issues.find(i => i.id === selectedIssueId) ?? null
 

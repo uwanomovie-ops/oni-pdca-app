@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useCallback, useState, useRef } from 'react'
 import { api } from '@/lib/api'
 import type { Issue, Task, Status } from '@/lib/types'
 import { getDueHealth, dueHealthCardClass, cn } from '@/lib/utils'
+import { useDragReorder } from '@/hooks/useDragReorder'
 import AchievementBar from './AchievementBar'
 import StatusSelect from './StatusSelect'
 import DueHealthBadge from './DueHealthBadge'
@@ -11,7 +12,7 @@ import AICoachKdiBadge from './AICoachKdiBadge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Slider } from '@/components/ui/slider'
-import { Plus, CheckSquare, Calendar } from 'lucide-react'
+import { Plus, CheckSquare, Calendar, GripVertical } from 'lucide-react'
 import ItemActionButtons from './ItemActionButtons'
 
 interface Props {
@@ -94,6 +95,25 @@ export default function KDIPane({ tasks, selectedIssue, onRefresh, readOnly }: P
     await onRefresh()
   }
 
+  const persistTaskOrder = useCallback(async (ordered: Task[]) => {
+    await Promise.all(
+      ordered.map((task, index) =>
+        task.sort_order === index
+          ? Promise.resolve()
+          : api.patch(`/api/tasks/${task.id}`, { sort_order: index }),
+      ),
+    )
+    await onRefresh()
+  }, [onRefresh])
+
+  const {
+    orderedItems: orderedTasks,
+    dragIndex,
+    overIndex,
+    getItemDragProps,
+    getHandleProps,
+  } = useDragReorder(tasks, persistTaskOrder, readOnly)
+
   return (
     <div className="flex flex-col h-full w-full min-w-0 bg-background">
       {/* Header */}
@@ -132,18 +152,32 @@ export default function KDIPane({ tasks, selectedIssue, onRefresh, readOnly }: P
           </p>
         )}
 
-        {tasks.map(task => {
+        {orderedTasks.map((task, index) => {
           const isExpanded = expandedId === task.id
           const dueHealth = getDueHealth(task)
+          const isDragging = dragIndex === index
+          const isDropTarget = overIndex === index && dragIndex !== null && dragIndex !== index
           return (
             <div
               key={task.id}
+              {...getItemDragProps(index)}
               className={cn(
                 'group p-3 rounded-xl border border-border bg-background hover:border-emerald-200 hover:shadow-sm transition-all',
-                dueHealthCardClass(dueHealth)
+                dueHealthCardClass(dueHealth),
+                isDragging && 'opacity-40',
+                isDropTarget && 'border-emerald-400 ring-2 ring-emerald-200',
               )}
             >
               <div className="flex items-start gap-2">
+                {!readOnly && (
+                  <div
+                    {...getHandleProps(index)}
+                    aria-label="並び替え"
+                    className="mt-0.5 shrink-0 cursor-grab active:cursor-grabbing text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-emerald-600 transition-opacity touch-none"
+                  >
+                    <GripVertical className="w-4 h-4" />
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-1">
                     {editingId === task.id ? (
