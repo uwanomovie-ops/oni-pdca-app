@@ -214,6 +214,24 @@
   .bonus-calendar-wrap img { width:100%;display:block; }
   .bonus-calendar-cap { padding:10px 16px;background:var(--slate-50);border-top:1px solid var(--slate-200);font-size:12px;color:var(--slate-500);text-align:center; }
   .overview-title { font-size:clamp(20px,3vw,28px);font-weight:800;margin-bottom:12px;text-wrap:balance; }
+
+  /* learnings section */
+  .learn-legend { display:flex;flex-wrap:wrap;gap:14px;margin-bottom:24px;font-size:12px;color:var(--slate-600); }
+  .learn-legend span { display:inline-flex;align-items:center;gap:6px; }
+  .learn-tag { display:inline-block;padding:1px 9px;border-radius:100px;font-size:10px;font-weight:700;white-space:nowrap; }
+  .lt-pdca { background:#eef2ff;color:#4338ca; }
+  .lt-line { background:#f0fdf4;color:#15803d; }
+  .lt-fig  { background:#fffbeb;color:#b45309; }
+  .learn-table { width:100%;border-collapse:collapse;background:white;border:1px solid var(--slate-200);border-radius:12px;overflow:hidden;font-size:13px; }
+  .learn-table th, .learn-table td { padding:12px 14px;text-align:left;border-bottom:1px solid var(--slate-100);vertical-align:top;word-break:normal;line-break:auto; }
+  .learn-table th { background:var(--slate-100);font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--slate-500); }
+  .learn-table tr:last-child td { border-bottom:none; }
+  .learn-what { font-weight:700;color:var(--slate-800); }
+  .learn-lec { display:inline-block;background:var(--slate-100);color:var(--slate-500);border-radius:6px;padding:1px 7px;font-size:10px;font-weight:700;margin-top:5px; }
+  .learn-use { font-size:12px;color:var(--slate-600);line-height:1.7; }
+  .learn-use .learn-tag { margin-right:4px; }
+  .learn-summary { margin-top:20px;padding:14px 18px;background:var(--slate-50);border:1px solid var(--slate-200);border-left:4px solid var(--emerald);border-radius:0 10px 10px 0;font-size:13px;color:var(--slate-700); }
+  .learn-summary strong { color:var(--emerald); }
 </style>
 </head>
 <body>
@@ -234,6 +252,7 @@
     <a href="#struggle">苦戦したポイント</a>
     <a href="#storage">保持するデータと保存先</a>
     <a href="#bonus">おまけ：<span class="keep-word">2ヶ月目</span>との連携</a>
+    <a href="#learnings">学んだことの活用</a>
   </nav>
 </div>
 
@@ -599,6 +618,134 @@
       <img src="images/line-budget.png" alt="LINE 予算残">
       <div class="bonus-shot-cap">💰 予算残 — 計画と実動の差分</div>
     </div>
+  </div>
+</div>
+
+<!-- LEARNINGS: what we used from the school -->
+<div class="section" id="learnings" style="background:white;">
+  <div class="section-num">
+    <div class="section-num-badge" style="background:var(--emerald);">🎓</div>
+    <div class="section-num-label">LEARNINGS</div>
+  </div>
+  <h2>AIドリブンスクールで学んだこと × 実装での活用</h2>
+  <p class="section-lead">
+    第1〜8回で学んだ技術・考え方を、この <strong>鬼速PDCAアプリ</strong>と2ヶ月目の <strong>LINE時間計測アプリ</strong>にどれだけ取り入れているか。<br>
+    Next.js や Neon、Webhook など、講義で扱った主要トピックをほぼ網羅的に使っています。
+  </p>
+
+  <div class="learn-legend">
+    <span><span class="learn-tag lt-pdca">PDCA</span> 鬼速PDCAアプリ</span>
+    <span><span class="learn-tag lt-line">LINE</span> 2ヶ月目・LINE時間計測</span>
+    <span><span class="learn-tag lt-fig">図解</span> この発表図解</span>
+  </div>
+
+  <table class="learn-table">
+    <thead>
+      <tr>
+        <th style="width:36%;">学んだこと</th>
+        <th>このプロジェクトでの使いどころ</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          <div class="learn-what">Next.js / React / TypeScript（App Router）</div>
+          <span class="learn-lec">第5・6回</span>
+        </td>
+        <td class="learn-use">
+          <span class="learn-tag lt-pdca">PDCA</span>4ペインボードのUIと API Routes を、この構成でゼロから実装。
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <div class="learn-what">Tailwind CSS + shadcn/ui</div>
+          <span class="learn-lec">第3・5・6回</span>
+        </td>
+        <td class="learn-use">
+          <span class="learn-tag lt-pdca">PDCA</span>全画面のスタイルとボタン・スライダー等のUI部品。
+          <span class="learn-tag lt-fig">図解</span>この発表図解も同じCSSの考え方で作成。
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <div class="learn-what">Neon PostgreSQL / SQL でのデータ保存</div>
+          <span class="learn-lec">第7・8回</span>
+        </td>
+        <td class="learn-use">
+          <span class="learn-tag lt-pdca">PDCA</span>goals / issues / tasks / reviews / action_items を生SQLで保存。
+          <span class="learn-tag lt-line">LINE</span>「消したくないデータはDBへ」の判断で、実動記録をスプレッドシートに蓄積。
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <div class="learn-what">AI API の活用（生成AIを組み込む）</div>
+          <span class="learn-lec">第4回〜</span>
+        </td>
+        <td class="learn-use">
+          <span class="learn-tag lt-pdca">PDCA</span>Gemini 2.5 Flash で「AI分解（KPI/KDI草案）」「AI週次コーチ」。
+          <span class="learn-tag lt-line">LINE</span>Gemini で日報の要約。
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <div class="learn-what">自動化ツールの4パーツ / Webhook</div>
+          <span class="learn-lec">第3回</span>
+        </td>
+        <td class="learn-use">
+          <span class="learn-tag lt-line">LINE</span>LINE Webhook ＋ GASトリガー（トリガー→ソース→処理→届け先）で実動記録を自動集計・通知。
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <div class="learn-what">API キー・環境変数の安全な管理</div>
+          <span class="learn-lec">第3・7回</span>
+        </td>
+        <td class="learn-use">
+          <span class="learn-tag lt-pdca">PDCA</span><code>DATABASE_URL</code> / <code>GEMINI_API_KEY</code> を <code>.env.local</code>・Vercel環境変数へ隔離。
+          <span class="learn-tag lt-line">LINE</span>LINEトークン等をコードから分離。
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <div class="learn-what">Vercel へのデプロイ</div>
+          <span class="learn-lec">第5・6回</span>
+        </td>
+        <td class="learn-use">
+          <span class="learn-tag lt-pdca">PDCA</span>GitHub 連携で main への push から本番を自動デプロイ。
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <div class="learn-what">Git / GitHub でのバージョン管理</div>
+          <span class="learn-lec">第1・2・6回</span>
+        </td>
+        <td class="learn-use">
+          <span class="learn-tag lt-pdca">PDCA</span>コード・<code>schema.sql</code>・README を管理し、<code>.gitignore</code> で秘密情報を除外。
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <div class="learn-what">HTML図解 + Surge.sh で公開</div>
+          <span class="learn-lec">第1・3・6回</span>
+        </td>
+        <td class="learn-use">
+          <span class="learn-tag lt-fig">図解</span>この発表図解と連携図解を静的サイトとして公開。
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <div class="learn-what">grill-me / AGENTS.md・Cursor Rules</div>
+          <span class="learn-lec">第2・5・6回</span>
+        </td>
+        <td class="learn-use">
+          <span class="learn-tag lt-pdca">PDCA</span>企画をグリル（壁打ち）で固め、<code>AGENTS.md</code> でAIの前提・ルールを統一。
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="learn-summary">
+    <strong>まとめ：</strong>第8回までの主要トピック（Next.js・DB・API・自動化・デプロイ・AI活用）は、2つのアプリと発表図解でほぼ一通り実践しています。
   </div>
 </div>
 
