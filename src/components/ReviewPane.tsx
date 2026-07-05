@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import type { Workspace, Goal, Issue, Task, Review, ActionItem } from '@/lib/types'
-import { getWeekStart, formatWeekLabel, shiftWeekStart } from '@/lib/utils'
+import { getWeekStart, formatWeekLabel, shiftWeekStart, normalizeWeekStart } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -44,35 +44,41 @@ export default function ReviewPane({
   const [addingAdjust, setAddingAdjust] = useState(false)
 
   const currentReview = reviews.find(
-    r => r.goal_id === (selectedGoal?.id ?? null) && r.week_start === weekStart
+    r => r.goal_id === (selectedGoal?.id ?? null) && normalizeWeekStart(r.week_start) === weekStart
   ) ?? null
 
   useEffect(() => {
+    if (savingReflection) return
     setReflection(currentReview?.reflection ?? '')
-  }, [currentReview?.id, weekStart, selectedGoal?.id])
+  }, [currentReview?.id, currentReview?.reflection, weekStart, selectedGoal?.id, savingReflection])
 
   const currentAdjustItems = currentReview
     ? actionItems.filter(a => a.review_id === currentReview.id)
     : []
 
-  const ensureReview = async (): Promise<string> => {
+  const ensureReview = async (reflectionText?: string): Promise<string> => {
     if (currentReview) return currentReview.id
     const data = await api.post('/api/reviews', {
       workspace_id: workspace.id,
       goal_id: selectedGoal?.id ?? null,
       week_start: weekStart,
-      reflection: '',
+      reflection: reflectionText ?? reflection,
     })
     await onRefresh()
     return data.id
   }
 
   const handleSaveReflection = async () => {
+    const textToSave = reflection
     setSavingReflection(true)
-    const reviewId = await ensureReview()
-    await api.patch(`/api/reviews/${reviewId}`, { reflection })
-    setSavingReflection(false)
-    await onRefresh()
+    try {
+      const reviewId = await ensureReview(textToSave)
+      await api.patch(`/api/reviews/${reviewId}`, { reflection: textToSave })
+      setReflection(textToSave)
+      await onRefresh()
+    } finally {
+      setSavingReflection(false)
+    }
   }
 
   const handleAddAdjust = async (e: React.FormEvent) => {

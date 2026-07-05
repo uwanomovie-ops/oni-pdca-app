@@ -29,6 +29,11 @@ function parseDateOnly(dateStr: string): Date {
   return new Date(y, m - 1, d)
 }
 
+/** API/DB から来た week_start を YYYY-MM-DD に揃える */
+export function normalizeWeekStart(value: string): string {
+  return value.slice(0, 10)
+}
+
 /** 週の開始日（日曜）。日曜に振り返りする想定で、日曜当日は「先週の日〜土」を表示 */
 export function getWeekStart(date: Date = new Date()): string {
   const d = new Date(date.getFullYear(), date.getMonth(), date.getDate())
