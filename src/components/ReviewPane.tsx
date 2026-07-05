@@ -38,7 +38,8 @@ export default function ReviewPane({
   hideCoach = false,
 }: Props) {
   const [weekStart, setWeekStart] = useState(getWeekStart())
-  const [reflection, setReflection] = useState('')
+  /** null = DB の保存値を表示。文字列 = 編集中の下書き */
+  const [reflectionDraft, setReflectionDraft] = useState<string | null>(null)
   const [savingReflection, setSavingReflection] = useState(false)
   const [newAdjust, setNewAdjust] = useState('')
   const [addingAdjust, setAddingAdjust] = useState(false)
@@ -47,10 +48,11 @@ export default function ReviewPane({
     r => r.goal_id === (selectedGoal?.id ?? null) && normalizeWeekStart(r.week_start) === weekStart
   ) ?? null
 
+  const reflection = reflectionDraft ?? currentReview?.reflection ?? ''
+
   useEffect(() => {
-    if (savingReflection) return
-    setReflection(currentReview?.reflection ?? '')
-  }, [currentReview?.id, currentReview?.reflection, weekStart, selectedGoal?.id, savingReflection])
+    setReflectionDraft(null)
+  }, [weekStart, selectedGoal?.id, currentReview?.id])
 
   const currentAdjustItems = currentReview
     ? actionItems.filter(a => a.review_id === currentReview.id)
@@ -70,11 +72,12 @@ export default function ReviewPane({
 
   const handleSaveReflection = async () => {
     const textToSave = reflection
+    if (!textToSave.trim()) return
     setSavingReflection(true)
     try {
       const reviewId = await ensureReview(textToSave)
       await api.patch(`/api/reviews/${reviewId}`, { reflection: textToSave })
-      setReflection(textToSave)
+      setReflectionDraft(null)
       await onRefresh()
     } finally {
       setSavingReflection(false)
@@ -161,7 +164,7 @@ export default function ReviewPane({
                 <div className="space-y-2">
                   <Textarea
                     value={reflection}
-                    onChange={e => setReflection(e.target.value)}
+                    onChange={e => setReflectionDraft(e.target.value)}
                     onBlur={handleSaveReflection}
                     placeholder="今週の振り返りを書く..."
                     rows={4}
@@ -193,7 +196,7 @@ export default function ReviewPane({
                 ensureReview={ensureReview}
                 onRefresh={onRefresh}
                 onSelectIssue={onSelectIssue}
-                onReflectionChange={setReflection}
+                onReflectionChange={setReflectionDraft}
               />
             )}
 

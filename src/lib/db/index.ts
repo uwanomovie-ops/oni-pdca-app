@@ -7,14 +7,20 @@ function toDateOnlyString(value: Date): string {
   return value.toLocaleDateString('en-CA', { timeZone: 'Asia/Tokyo' })
 }
 
+function normalizeDateField(value: unknown): unknown {
+  if (value instanceof Date) return toDateOnlyString(value)
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value
+    const parsed = new Date(value)
+    if (!Number.isNaN(parsed.getTime())) return toDateOnlyString(parsed)
+  }
+  return value
+}
+
 function serializeRow(row: Record<string, unknown>): Record<string, unknown> {
   const result: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(row)) {
-    if (value instanceof Date) {
-      result[key] = toDateOnlyString(value)
-    } else {
-      result[key] = value
-    }
+    result[key] = normalizeDateField(value)
   }
   return result
 }
